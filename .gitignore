@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+/cache/
+/data/
+/backups/
+/logs/
+/runtime/
+/dist/
+/node_modules/
