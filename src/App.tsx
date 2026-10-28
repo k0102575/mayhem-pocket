@@ -7,7 +7,6 @@ import {
   Download,
   ArrowUpRight,
   Layers3,
-  WifiOff,
   ChevronRight,
   ShieldCheck,
   PackageOpen,
@@ -18,6 +17,10 @@ const pct = (n: any) =>
   typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1
     ? `${(n * 100).toFixed(2)}%`
     : "—";
+const dateTime = (value: any) =>
+  value && !Number.isNaN(Date.parse(value))
+    ? new Date(value).toLocaleString("ko-KR")
+    : "미기록";
 const count = (n: any) => (typeof n === "number" ? n.toLocaleString() : "—");
 const initials = (s: string) =>
   [...s]
@@ -41,6 +44,18 @@ function Icon({
   size?: number;
 }) {
   const [bad, setBad] = useState(false);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    setBad(false);
+  }, [url]);
+  useEffect(() => {
+    const reset = () => {
+      setBad(false);
+      setRetry(Date.now());
+    };
+    window.addEventListener("pocket-images-retry", reset);
+    return () => window.removeEventListener("pocket-images-retry", reset);
+  }, []);
   return url && !bad ? (
     <img
       loading="lazy"
@@ -48,7 +63,11 @@ function Icon({
       height={size}
       style={{ width: size, height: size }}
       className="game-icon"
-      src={"/api/image?url=" + encodeURIComponent(url)}
+      src={
+        "/api/image?url=" +
+        encodeURIComponent(url) +
+        (retry ? "&retry=" + retry : "")
+      }
       alt={name}
       onError={() => setBad(true)}
     />
@@ -66,7 +85,11 @@ function useSaved<T>(key: string, fallback: T) {
       return fallback;
     }
   });
-  useEffect(() => localStorage.setItem(key, JSON.stringify(v)), [key, v]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(v));
+    } catch {}
+  }, [key, v]);
   return [v, set] as const;
 }
 export default function App() {
@@ -87,6 +110,9 @@ export default function App() {
   const [notice, N] = useState("");
   const [ended, END] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const [settingsReady, SETTINGS] = useState(false);
+  const savedSettings = useRef("");
+  const [plan, PLAN] = useState<any>(null);
   const selection = useRef(id);
   selection.current = id;
   async function api(url: string, body?: object) {
@@ -136,17 +162,73 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!status.token) return;
+    void api("/settings")
+      .then((value) => {
+        if (value) {
+          I(value.champion);
+          T(value.tab);
+          F(value.favorites);
+          R(value.recent);
+          RR(value.rarity);
+          SS(value.sort);
+          BS(value.buildSort);
+          savedSettings.current = JSON.stringify(value);
+        }
+        SETTINGS(true);
+      })
+      .catch(() => {
+        E("설정을 불러오지 못했습니다. 현재 설정은 유지됩니다.");
+      });
+  }, [status.token]);
+  useEffect(() => {
+    if (!settingsReady || !status.token) return;
+    const value = {
+      champion: id,
+      tab,
+      favorites: favs,
+      recent,
+      rarity,
+      sort,
+      buildSort,
+    };
+    const encoded = JSON.stringify(value);
+    if (encoded === savedSettings.current) return;
+    const timer = setTimeout(
+      () =>
+        void api("/settings", value)
+          .then(() => {
+            savedSettings.current = encoded;
+          })
+          .catch(() => E("설정 저장에 실패했습니다.")),
+      300,
+    );
+    return () => clearTimeout(timer);
+  }, [
+    settingsReady,
+    status.token,
+    id,
+    tab,
+    favs,
+    recent,
+    rarity,
+    sort,
+    buildSort,
+  ]);
+  useEffect(() => {
+    if (!status.token) return;
     void api("/check", {})
       .then(() => refresh())
       .catch(() => N("오프라인 · 저장된 데이터로 이용할 수 있습니다."));
   }, [status.token]);
   useEffect(() => {
+    D(null);
+    AQ("");
+  }, [id]);
+  useEffect(() => {
     if (!id) {
       D(null);
       return;
     }
-    D(null);
-    AQ("");
     void api("/champions/" + id)
       .then((d) => {
         if (selection.current === id) D(d);
@@ -155,7 +237,13 @@ export default function App() {
   }, [id, status.job?.done]);
   useEffect(() => {
     if (!status.job?.running) return;
-    const t = setInterval(() => void refresh(), 1800);
+    const t = setInterval(
+      () =>
+        void refresh().catch(() =>
+          N("서버 연결이 끊어졌습니다. 기존 화면은 유지됩니다."),
+        ),
+      1800,
+    );
     return () => clearInterval(t);
   }, [status.job?.running]);
   async function action(fn: () => Promise<void>) {
@@ -185,8 +273,26 @@ export default function App() {
         ),
     [champs, q, favs],
   );
+  const latestVersion = status.checkError ? null : status.remoteVersion;
+  const currentVersion = detail?.meta?.dataVersion;
+  const detailCurrent =
+    !!latestVersion && currentVersion === latestVersion && !dRawOnly(detail);
+  function dRawOnly(x: any) {
+    return !!x?.data?.rawOnly || !!x?.buildStale;
+  }
   const d = detail?.data;
   const champ = d?.champion ?? champs.find((c) => c.id === id);
+  const augmentDates = [
+    ...new Set<string>(
+      (d?.augments ?? [])
+        .map((a: any) => a.stats?.winRateDate)
+        .filter((x: any) => typeof x === "string"),
+    ),
+  ].sort();
+  const augmentDateText =
+    augmentDates.length > 1
+      ? `${augmentDates[0]} ~ ${augmentDates[augmentDates.length - 1]}`
+      : (augmentDates[0] ?? "미제공");
   const augments = useMemo(
     () =>
       [...(d?.augments ?? [])]
@@ -251,7 +357,7 @@ export default function App() {
           <span className="muted">
             캐시 {status.catalogVersion ?? "없음"}{" "}
             <span className="separator">/</span>{" "}
-            {status.creditsEstimated ? "예상 잔여" : "잔여"}{" "}
+            {status.creditsEstimated ? "예상 잔여" : "마지막 확인 잔여"}{" "}
             <strong>{status.credits ?? "—"}</strong> credits
           </span>
           <div className="sync-buttons">
@@ -261,12 +367,14 @@ export default function App() {
               onClick={() =>
                 void action(async () => {
                   await api("/catalog", {});
-                  N("챔피언 목록을 저장했습니다.");
+                  N("챔피언 목록을 확인했습니다. 최신 캐시는 재사용합니다.");
                 })
               }
             >
               <RefreshCw size={14} />
-              목록 갱신 · 1
+              {status.catalogVersion && status.catalogVersion === latestVersion
+                ? "목록 최신 · 확인 무료"
+                : "목록 갱신 · 최대 1"}
             </Button>
             <Button
               variant="outline"
@@ -274,7 +382,7 @@ export default function App() {
               onClick={() =>
                 void action(async () => {
                   if (status.job?.running) await api("/cancel", {});
-                  else await api("/sync", {});
+                  else PLAN(await api("/sync/plan", {}));
                 })
               }
             >
@@ -284,7 +392,69 @@ export default function App() {
           </div>
         </div>
       </section>
-      {!status.hasKey && (
+      <div className="freshness">
+        <span>
+          {status.checkError
+            ? "최신 여부 확인 불가"
+            : latestVersion
+              ? status.catalogVersion === latestVersion
+                ? "목록 최신"
+                : "새 데이터 있음 · 목록 갱신을 눌러주세요."
+              : "최신 버전 확인 중"}
+        </span>
+        <span>
+          서버 {latestVersion ?? "확인 불가"} · 확인{" "}
+          {dateTime(status.checkedAt)}
+        </span>
+        <Button
+          variant="ghost"
+          disabled={busy}
+          onClick={() =>
+            void action(async () => {
+              await api("/check", {});
+              N("최신 버전을 다시 확인했습니다.");
+            })
+          }
+        >
+          버전 확인 · 무료
+        </Button>
+      </div>
+      <div className="cache-times">
+        목록 다운로드 {dateTime(status.catalogDownloadedAt)} · 제공자 생성{" "}
+        {dateTime(status.catalogStatsDate)} · credits 마지막 확인{" "}
+        {dateTime(status.creditsCheckedAt)}
+      </div>
+      {plan && (
+        <section className="alert sync-confirm" aria-label="전체 수집 안내">
+          <strong>전체 증강 다운로드</strong>
+          <p>
+            {plan.needsCatalog
+              ? plan.message
+              : `대상 버전 ${plan.version} · 미저장 ${plan.needed}명 · 예상 ${plan.cost} credits (잔여 약 ${plan.remaining}, 상세용 20 유지)`}
+          </p>
+          <Button variant="outline" onClick={() => PLAN(null)}>
+            닫기
+          </Button>
+          {
+            <Button
+              disabled={busy || (!plan.needsCatalog && plan.cost === 0)}
+              onClick={() =>
+                void action(async () => {
+                  await api("/sync", {});
+                  PLAN(null);
+                })
+              }
+            >
+              {plan.needsCatalog
+                ? "목록도 함께 갱신 후 수집"
+                : plan.cost === 0
+                  ? "모두 저장됨"
+                  : "다운로드 시작"}
+            </Button>
+          }
+        </section>
+      )}
+      {status.token && !status.hasKey && (
         <div className="alert">
           최초 설정: .env.example을 .env로 복사하고 ARAMGG_API_KEY를 입력한 뒤
           다시 실행하세요.
@@ -437,7 +607,11 @@ export default function App() {
                   }
                 >
                   <Download size={14} />
-                  상세 받기 · 2
+                  {busy
+                    ? "처리 중…"
+                    : detailCurrent
+                      ? "최신 상세 · 캐시 사용"
+                      : "상세 받기 · 최대 2"}
                 </Button>
               </div>
               <div className="tabs">
@@ -472,11 +646,52 @@ export default function App() {
                   <div className="data-note">
                     패치 {detail.meta?.gamePatch} · 캐시{" "}
                     {detail.meta?.dataVersion}
-                    {detail.meta?.dataVersion !== status.catalogVersion
-                      ? " · 이전 버전"
-                      : ""}
-                    <span>추천 순위 CN / 증강 승률 WORLD 업로드 표본</span>
+                    {latestVersion
+                      ? currentVersion === latestVersion
+                        ? " · 최신"
+                        : " · 업데이트 있음"
+                      : " · 최신 여부 미확인"}
+                    <span>
+                      {tab === "augments"
+                        ? "추천 순위 CN / 증강 승률 WORLD 업로드 표본"
+                        : "일반 칼바람 빌드 참고"}
+                    </span>
                   </div>
+                  <div className="cache-times detail-times">
+                    다운로드 {dateTime(detail.cache?.downloadedAt)}
+                    <br />
+                    {tab === "augments" ? (
+                      <>
+                        챔피언·추천 기준{" "}
+                        {d.champion?.stats?.date ??
+                          detail.meta?.statsDate ??
+                          "미제공"}{" "}
+                        · 증강 승률 기준 {augmentDateText}
+                        <br />
+                        제공자 생성 {dateTime(detail.meta?.generatedAt)}
+                      </>
+                    ) : (
+                      <>
+                        빌드 다운로드{" "}
+                        {dateTime(
+                          (detail.buildCache ?? detail.cache)?.downloadedAt,
+                        )}{" "}
+                        · 빌드 패치 {d.builds?.[0]?.patch ?? "미제공"} · 제공자
+                        생성{" "}
+                        {dateTime(
+                          (detail.buildMeta ?? detail.meta)?.generatedAt,
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {detail.buildStale && (
+                    <div className="notice">
+                      증강과 빌드의 버전이 달라 빌드는{" "}
+                      {detail.buildMeta?.dataVersion} 버전 캐시를 유지했습니다.
+                      다운로드 {dateTime(detail.buildCache?.downloadedAt)} ·
+                      상세 받기로 갱신할 수 있습니다.
+                    </div>
+                  )}
                   {tab === "augments" ? (
                     <>
                       <div className="filters">
@@ -627,7 +842,10 @@ export default function App() {
                               </span>
                             </div>
                             <p className="muted">
-                              일반 칼바람 빌드 참고 · 사용 빈도순
+                              일반 칼바람 빌드 참고 ·{" "}
+                              {buildSort === "winRate"
+                                ? "승률순"
+                                : "사용 빈도순"}
                             </p>
                             {(b.coreItems ?? [])
                               .slice(0, 3)
@@ -702,11 +920,26 @@ export default function App() {
       </main>
       <footer>
         <span>
-          Mayhem Pocket <b>v0.1.0</b> · 데이터:{" "}
+          Mayhem Pocket <b>v0.1.1</b> · 데이터:{" "}
           <a href="https://aramgg.com" target="_blank" rel="noreferrer">
             ARAMGG <ArrowUpRight size={11} />
           </a>
         </span>
+        <Button
+          variant="ghost"
+          disabled={busy}
+          onClick={() =>
+            void action(async () => {
+              await api("/images/reset", {});
+              window.dispatchEvent(new Event("pocket-images-retry"));
+              N(
+                "통계는 유지하고 아이콘만 다시 받습니다. API credits는 사용하지 않습니다.",
+              );
+            })
+          }
+        >
+          아이콘 다시 받기
+        </Button>
         <span>
           Riot Games의 공식 서비스가 아닙니다. 게임 자산의 권리는 각 권리자에게
           있습니다.

@@ -33,10 +33,34 @@ export function rawDetail(raw: any, champion: any, augments: any[]) {
         wins: num(v.num_win_games),
         games: num(v.num_games),
         winRateRegion: v.win_rate_region,
+        winRateDate: v.win_rate_date ?? null,
+        winRateSource: v.win_rate_source ?? null,
+        date: typeof row[3] === "string" ? row[3] : null,
         source: stats.source,
       },
     })),
-    augmentTrios: [],
+    statsDate: typeof row[3] === "string" ? row[3] : null,
+    augmentTrios: Object.entries(stats.augment_trios ?? {}).map(
+      ([ids, v]: any) => ({
+        augmentIds: ids.split(":").map(Number),
+        augments: ids
+          .split(":")
+          .map(
+            (id: string) =>
+              base.get(id) ?? { id: Number(id), name: `증강 ${id}` },
+          ),
+        stats: {
+          wins: num(v.num_win_games),
+          games: num(v.num_games),
+          winRate: num(v.win_rate),
+          pickRate: num(v.pick_rate),
+          source: v.source,
+          region: v.region,
+          date: v.date,
+          gamePatch: v.game_patch,
+        },
+      }),
+    ),
     builds: [],
     rawOnly: true,
   };
