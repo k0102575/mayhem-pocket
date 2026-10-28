@@ -77,7 +77,7 @@ async function launch(
           r();
         }, 2000).unref();
       });
-      await rm(root, { recursive: true, force: true });
+      if (!existingRoot) await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     },
   };
 }
