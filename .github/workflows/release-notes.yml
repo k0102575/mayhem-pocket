@@ -1,0 +1,42 @@
+name: Update release notes
+on:
+  push:
+    branches: [main]
+    paths: ["docs/releases/*.md"]
+permissions:
+  contents: write
+concurrency:
+  group: release-notes
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const directory = 'docs/releases';
+            for (const file of await fs.readdir(directory)) {
+              if (!/^v\d+\.\d+\.\d+\.md$/.test(file)) continue;
+              const tag = file.slice(0, -3);
+              let release;
+              try {
+                ({ data: release } = await github.rest.repos.getReleaseByTag({
+                  ...context.repo, tag,
+                }));
+              } catch (error) {
+                if (error.status === 404) {
+                  core.info(`${tag}: not published yet; skipping`);
+                  continue;
+                }
+                throw error;
+              }
+              const body = await fs.readFile(`${directory}/${file}`, 'utf8');
+              if ((release.body ?? '').trim() === body.trim()) continue;
+              await github.rest.repos.updateRelease({
+                ...context.repo, release_id: release.id, body,
+              });
+              core.info(`${tag}: release notes updated`);
+            }
