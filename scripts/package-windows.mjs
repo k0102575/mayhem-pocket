@@ -42,6 +42,9 @@ execFileSync(
   ["ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"],
   { cwd: path.join(dir, "app"), stdio: "inherit", shell: true },
 );
+execFileSync(process.execPath, ["scripts/build-launcher.mjs", dir], {
+  stdio: "inherit",
+});
 await cp(".env.example", path.join(dir, ".env.example"));
 await mkdir(path.join(dir, "scripts"), { recursive: true });
 await cp("scripts/stop.mjs", path.join(dir, "scripts/stop.mjs"));
