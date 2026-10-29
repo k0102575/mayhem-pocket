@@ -17,6 +17,7 @@ const quote = (s) => s.replaceAll("'", "''");
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const children = [];
 let occupied;
+let phase = "EXTRACT";
 const env = {
   ...process.env,
   PORT: "14319",
@@ -115,6 +116,7 @@ try {
     "-Command",
     `Expand-Archive -LiteralPath '${quote(path.resolve("release", name + ".zip"))}' -DestinationPath '${quote(smoke)}' -Force`,
   ]);
+  phase = "VERIFY_FILES";
   for (const file of [
     "Mayhem Pocket.exe",
     "runtime/node.exe",
@@ -140,6 +142,7 @@ try {
     2,
     "콘솔 없는 Windows GUI 실행 파일이어야 합니다.",
   );
+  phase = "START";
   const first = await start();
   assert.equal(first.info.status.hasKey, false);
   assert.ok(
@@ -147,8 +150,10 @@ try {
       await (await fetch(`http://127.0.0.1:${first.info.port}`)).text()
     ).includes("Mayhem Pocket"),
   );
+  phase = "DUPLICATE";
   const duplicate = run(path.join(dir, "Mayhem Pocket.exe"));
   await exited(duplicate);
+  phase = "LEGACY_START";
   const legacy = run(process.env.ComSpec || "cmd.exe", [
     "/d",
     "/s",
@@ -162,12 +167,14 @@ try {
     first.info.pid,
     "중복 실행이 서버를 늘리면 안 됩니다.",
   );
+  phase = "TRAY_STOP";
   await exited(run(path.join(dir, "Mayhem Pocket.exe"), ["--stop"]));
   await closed(first.info, first.child);
   console.log(
     "GUI 실행 파일, 한글·공백 경로, UI, 중복 실행, 실행.cmd, 트레이와 동일한 종료 경로 검증 완료",
   );
 
+  phase = "WEB_STOP";
   const second = await start();
   const origin = `http://127.0.0.1:${second.info.port}`;
   const stop = await fetch(origin + "/api/shutdown", {
@@ -178,6 +185,7 @@ try {
   await closed(second.info, second.child);
   console.log("웹 화면 종료 시 트레이 프로세스 종료 검증 완료");
 
+  phase = "PORT_STALE";
   occupied = createServer((req, res) => {
     res.writeHead(404);
     res.end();
@@ -192,6 +200,7 @@ try {
   );
   const third = await start();
   assert.equal(third.info.port, 14320);
+  phase = "LEGACY_STOP";
   const stopScript = run(process.env.ComSpec || "cmd.exe", [
     "/d",
     "/s",
@@ -204,6 +213,7 @@ try {
   occupied = null;
   console.log("사용 중인 포트·이전 실행 기록 복구, 종료.cmd 검증 완료");
 
+  phase = "OWNER_CLEANUP";
   const fourth = await start();
   fourth.child.kill();
   await until(
@@ -211,6 +221,7 @@ try {
     "실행기 강제 종료 후 Node 정리",
   );
   console.log("실행기 강제 종료 시 서버 잔류 방지 검증 완료");
+  phase = "REUSE_EXISTING";
   const raw = run(path.join(dir, "runtime/node.exe"), [
     path.join(dir, "app/server/index.js"),
   ]);
@@ -243,6 +254,7 @@ try {
   await exited(raw);
   console.log("기존 서버 재사용·소유하지 않은 프로세스 보호 검증 완료");
 
+  phase = "MISSING_ENTRY";
   const entry = path.join(dir, "app/server/index.js");
   await rename(entry, entry + ".test-hold");
   try {
@@ -254,6 +266,23 @@ try {
     "필수 파일 누락 시 오류 로그·실패 종료 검증 완료. 실제 Windows 10 트레이 외관과 브라우저 표시는 수동 확인이 필요합니다.",
   );
 } catch (error) {
+  const code = [
+    "ENOENT",
+    "EACCES",
+    "EPERM",
+    "ECONNREFUSED",
+    "ERR_ASSERTION",
+    "ETIMEDOUT",
+  ].includes(error.code)
+    ? error.code
+    : "CHECK_FAILURE";
+  const numbers =
+    typeof error.actual === "number" && typeof error.expected === "number"
+      ? `; actual=${error.actual}; expected=${error.expected}`
+      : "";
+  console.error(
+    `::error title=Windows package check::phase=${phase}; code=${code}${numbers}`,
+  );
   let log = "";
   try {
     log = await readFile(path.join(dir, "logs/launcher.log"), "utf8");
