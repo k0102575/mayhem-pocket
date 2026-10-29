@@ -153,7 +153,7 @@ try {
     "/d",
     "/s",
     "/c",
-    '"실행.cmd"',
+    "실행.cmd",
   ]);
   await exited(legacy);
   await delay(800);
@@ -196,7 +196,7 @@ try {
     "/d",
     "/s",
     "/c",
-    '"종료.cmd"',
+    "종료.cmd",
   ]);
   await exited(stopScript);
   await closed(third.info, third.child);
@@ -211,6 +211,38 @@ try {
     "실행기 강제 종료 후 Node 정리",
   );
   console.log("실행기 강제 종료 시 서버 잔류 방지 검증 완료");
+  const raw = run(path.join(dir, "runtime/node.exe"), [
+    path.join(dir, "app/server/index.js"),
+  ]);
+  const rawInfo = await until(async () => {
+    const info = await status();
+    return info?.pid === raw.pid ? info : null;
+  }, "기존 서버 준비");
+  const attached = await start();
+  assert.equal(
+    attached.info.pid,
+    rawInfo.pid,
+    "기존 서버를 재사용해야 합니다.",
+  );
+  attached.child.kill();
+  await until(
+    () =>
+      attached.child.signalCode !== null || attached.child.exitCode !== null,
+    "연결 실행기 종료",
+  );
+  assert.equal(
+    await alive(rawInfo.pid),
+    true,
+    "실행기 소유가 아닌 기존 서버를 강제로 죽이면 안 됩니다.",
+  );
+  const rawOrigin = `http://127.0.0.1:${rawInfo.port}`;
+  await fetch(rawOrigin + "/api/shutdown", {
+    method: "POST",
+    headers: { "x-session-token": rawInfo.token, Origin: rawOrigin },
+  });
+  await exited(raw);
+  console.log("기존 서버 재사용·소유하지 않은 프로세스 보호 검증 완료");
+
   const entry = path.join(dir, "app/server/index.js");
   await rename(entry, entry + ".test-hold");
   try {

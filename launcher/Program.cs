@@ -244,7 +244,7 @@ internal sealed class TrayServer : ApplicationContext
         SetRunning();
         stopItem.Enabled = true;
         pendingOpen = false;
-        OpenBrowser();
+        if (!pendingStop) OpenBrowser();
         Program.Log("트레이 실행기 준비 완료");
     }
 

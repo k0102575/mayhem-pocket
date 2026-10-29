@@ -17,3 +17,9 @@ jobs:
       - run: npm run build
       - name: Verify Windows tray package
         run: node scripts/check-windows.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-tray-package
+          path: |
+            release/*.zip
+            release/*.sha256
