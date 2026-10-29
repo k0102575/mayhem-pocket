@@ -54,7 +54,8 @@ export function sanitizeSettings(v: any) {
   return {
     champion:
       Number.isInteger(v?.champion) && v.champion > 0 ? v.champion : null,
-    tab: v?.tab === "builds" ? "builds" : "augments",
+    theme: v?.theme === "light" ? "light" : "dark",
+    tab: ["summary", "augments", "builds"].includes(v?.tab) ? v.tab : "summary",
     favorites: ids(v?.favorites),
     recent: ids(v?.recent).slice(0, 8),
     rarity: ["all", "silver", "gold", "prismatic"].includes(v?.rarity)

@@ -8,9 +8,9 @@ const variants = cva(
   {
     variants: {
       variant: {
-        default: "bg-violet-500 text-white hover:bg-violet-400",
-        outline: "border border-zinc-700 bg-transparent hover:bg-zinc-800",
-        ghost: "hover:bg-zinc-800 text-zinc-400",
+        default: "pocket-button-primary",
+        outline: "pocket-button-outline",
+        ghost: "pocket-button-ghost",
       },
     },
     defaultVariants: { variant: "default" },

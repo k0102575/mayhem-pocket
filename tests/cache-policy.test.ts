@@ -60,6 +60,17 @@ test("server-side preferences validate identifiers and enum values", () => {
     tab: "evil",
   });
   assert.deepEqual(x.favorites, [8]);
-  assert.equal(x.tab, "augments");
+  assert.equal(x.tab, "summary");
+  for (const tab of ["summary", "augments", "builds"]) {
+    assert.equal(sanitizeSettings({ tab }).tab, tab);
+  }
+  assert.equal(sanitizeSettings(null).tab, "summary");
   assert.equal(x.champion, 8);
+});
+
+test("theme defaults to dark and persists only supported values", () => {
+  assert.equal(sanitizeSettings(null).theme, "dark");
+  assert.equal(sanitizeSettings({ theme: "light" }).theme, "light");
+  assert.equal(sanitizeSettings({ theme: "dark" }).theme, "dark");
+  assert.equal(sanitizeSettings({ theme: "invalid" }).theme, "dark");
 });

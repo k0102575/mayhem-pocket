@@ -77,7 +77,13 @@ async function launch(
           r();
         }, 2000).unref();
       });
-      if (!existingRoot) await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      if (!existingRoot)
+        await rm(root, {
+          recursive: true,
+          force: true,
+          maxRetries: 5,
+          retryDelay: 200,
+        });
     },
   };
 }
@@ -121,7 +127,12 @@ test("same-version catalog avoids paid request; preferences survive a different 
   );
   try {
     assert.equal((await a.request("/api/catalog")).body.downloaded, false);
-    await a.request("/api/settings", { champion: 8, favorites: [8] });
+    await a.request("/api/settings", {
+      champion: 8,
+      favorites: [8],
+      tab: "summary",
+      theme: "light",
+    });
     const settings = JSON.parse(
       await readFile(path.join(a.root, "cache/settings.json"), "utf8"),
     );
@@ -135,6 +146,8 @@ test("same-version catalog avoids paid request; preferences survive a different 
       assert.notEqual(second.base, a.base);
       const loaded = await (await fetch(second.base + "/api/settings")).json();
       assert.deepEqual(loaded.favorites, [8]);
+      assert.equal(loaded.tab, "summary");
+      assert.equal(loaded.theme, "light");
     } finally {
       await second.close();
     }
