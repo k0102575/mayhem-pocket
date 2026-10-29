@@ -42,7 +42,7 @@ npm start
 
 ## Release
 
-`package.json` 버전과 일치하는 `v0.1.0` 같은 태그를 push하면 Windows CI가 검사·빌드·공식 Node 런타임 포함 ZIP·SHA-256을 생성하고 사전 릴리스를 게시합니다. API 키는 CI에 필요 없습니다. 로컬 패키징은 Windows에서 `npm run package:windows`로 실행합니다.
+`package.json` 버전과 일치하는 `v0.1.0` 같은 태그를 push하면 Windows CI가 검사·빌드·공식 Node 런타임 포함 ZIP·SHA-256을 생성하고 정식 릴리스를 게시합니다. API 키는 CI에 필요 없습니다. 로컬 패키징은 Windows에서 `npm run package:windows`로 실행합니다.
 
 Windows 10 실사용과 게임 병행 메모리 사용은 실제 PC에서 별도로 검증해야 합니다.
 

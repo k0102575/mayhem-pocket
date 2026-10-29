@@ -47,7 +47,8 @@ jobs:
           path: release
       - uses: softprops/action-gh-release@v2
         with:
-          prerelease: true
+          prerelease: false
+          make_latest: true
           generate_release_notes: false
           body_path: docs/releases/${{ github.ref_name }}.md
           files: |
