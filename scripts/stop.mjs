@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { dataDirectory } from "./storage.mjs";
 try {
   const s = JSON.parse(
-    await readFile(new URL("../cache/instance.json", import.meta.url), "utf8"),
+    await readFile(path.join(dataDirectory(), "instance.json"), "utf8"),
   );
   const origin = `http://127.0.0.1:${s.port}`;
   const r = await fetch(origin + "/api/status", {

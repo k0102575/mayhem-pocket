@@ -8,8 +8,28 @@ const initials = (value: string) =>
         : character;
     })
     .join("");
+const compoundConsonants: Record<string, string> = {
+  ㄳ: "ㄱㅅ",
+  ㄵ: "ㄴㅈ",
+  ㄶ: "ㄴㅎ",
+  ㄺ: "ㄹㄱ",
+  ㄻ: "ㄹㅁ",
+  ㄼ: "ㄹㅂ",
+  ㄽ: "ㄹㅅ",
+  ㄾ: "ㄹㅌ",
+  ㄿ: "ㄹㅍ",
+  ㅀ: "ㄹㅎ",
+  ㅄ: "ㅂㅅ",
+};
 const normalizeSearch = (value: string) =>
-  value.normalize("NFC").replace(/\s+/gu, "").toLowerCase();
+  value
+    .normalize("NFC")
+    .replace(/\s+/gu, "")
+    .replace(
+      /[ㄳㄵㄶㄺㄻㄼㄽㄾㄿㅀㅄ]/gu,
+      (character) => compoundConsonants[character],
+    )
+    .toLowerCase();
 export function matches(value: string, query: string) {
   const source = normalizeSearch(value);
   const search = normalizeSearch(query);

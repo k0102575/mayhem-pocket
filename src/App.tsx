@@ -274,9 +274,13 @@ export default function App() {
   const [downloading, DOWNLOADING] = useState<number | null>(null);
   const downloadLock = useRef(false);
   const [busy, B] = useState(false);
+  const [catalogLoading, SETCATALOGLOADING] = useState(false);
   const [error, E] = useState("");
   const [notice, N] = useState("");
   const [managementOpen, MANAGEMENT] = useState(false);
+  const [editingKey, EDITKEY] = useState(false);
+  const [keyInput, KEYINPUT] = useState("");
+  const [savingKey, SAVINGKEY] = useState(false);
   const [hiddenJob, HIDEJOB] = useState("");
   const [ended, END] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -639,17 +643,25 @@ export default function App() {
           <Button
             variant="outline"
             disabled={busy || status.job?.running || !status.hasKey}
-            onClick={() =>
+            aria-busy={catalogLoading}
+            onClick={() => {
+              SETCATALOGLOADING(true);
               void action(async () => {
                 await api("/catalog", {});
                 N("챔피언 목록을 확인했습니다. 최신 캐시는 재사용합니다.");
-              })
-            }
+              }).finally(() => SETCATALOGLOADING(false));
+            }}
           >
-            <RefreshCw size={14} />
-            {status.catalogVersion && status.catalogVersion === latestVersion
-              ? "목록 확인 · 무료"
-              : "목록 갱신 · 최대 1"}
+            {catalogLoading ? (
+              <LoaderCircle size={14} className="spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
+            {catalogLoading
+              ? "목록 확인 중…"
+              : status.catalogVersion && status.catalogVersion === latestVersion
+                ? "목록 확인 · 무료"
+                : "목록 갱신 · 최대 1"}
           </Button>
           <Button
             variant="outline"
@@ -662,7 +674,7 @@ export default function App() {
             }
           >
             <Download size={14} />
-            {status.job?.running ? "수집 중단" : "전체 증강 받기"}
+            {status.job?.running ? "수집 중단" : "모든 챔피언 증강 미리 받기"}
           </Button>
         </div>
       </section>
@@ -672,6 +684,13 @@ export default function App() {
         hidden={!managementOpen}
         aria-label="데이터 관리"
       >
+        <Button
+          variant="outline"
+          disabled={busy || status.job?.running}
+          onClick={() => EDITKEY(true)}
+        >
+          API 키 {status.hasKey ? "변경" : "등록"}
+        </Button>
         <div className="sync-panel">
           <span className="muted">
             캐시 {status.catalogVersion ?? "없음"}{" "}
@@ -783,11 +802,71 @@ export default function App() {
           }
         </section>
       )}
-      {status.token && !status.hasKey && (
-        <div className="alert">
-          최초 설정: .env.example을 .env로 복사하고 ARAMGG_API_KEY를 입력한 뒤
-          다시 실행하세요.
-        </div>
+      {status.token && (!status.hasKey || editingKey) && (
+        <form
+          className="alert api-key-form"
+          aria-label={status.hasKey ? "API 키 변경" : "최초 API 키 등록"}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (busy || savingKey || status.job?.running || !keyInput.trim())
+              return;
+            SAVINGKEY(true);
+            void action(async () => {
+              await api("/credentials", { apiKey: keyInput });
+              KEYINPUT("");
+              EDITKEY(false);
+              N("API 키를 저장했습니다.");
+            }).finally(() => SAVINGKEY(false));
+          }}
+        >
+          <strong>
+            {status.hasKey
+              ? "API 키 변경"
+              : "처음 한 번, API 키를 등록해 주세요."}
+          </strong>
+          <p>
+            키는 이 PC의 문서 폴더에 저장되며, 다음 실행부터 자동으로
+            사용합니다.
+          </p>
+          <div className="api-key-controls">
+            <label htmlFor="api-key">ARAMGG API 키</label>
+            <input
+              id="api-key"
+              type="password"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={512}
+              value={keyInput}
+              onChange={(event) => KEYINPUT(event.target.value)}
+              disabled={busy || savingKey || status.job?.running}
+              placeholder="발급받은 API 키를 붙여넣으세요"
+            />
+            <Button
+              type="submit"
+              disabled={
+                busy || savingKey || status.job?.running || !keyInput.trim()
+              }
+              aria-busy={savingKey}
+            >
+              {savingKey && <LoaderCircle size={14} className="spin" />}
+              {savingKey ? "저장 중…" : "키 저장"}
+            </Button>
+            {status.hasKey && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy || savingKey}
+                onClick={() => {
+                  KEYINPUT("");
+                  EDITKEY(false);
+                }}
+              >
+                취소
+              </Button>
+            )}
+          </div>
+        </form>
       )}
       {settingsError && (
         <div className="alert error" role="alert">

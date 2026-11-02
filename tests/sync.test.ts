@@ -32,7 +32,12 @@ async function launch(
     ],
     {
       cwd: root,
-      env: { ...process.env, ARAMGG_API_KEY: "test-only-key", PORT: "0" },
+      env: {
+        ...process.env,
+        MAYHEM_DATA_DIR: path.join(root, "cache"),
+        ARAMGG_API_KEY: "test-only-key",
+        PORT: "0",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     },
   );

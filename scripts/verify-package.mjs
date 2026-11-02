@@ -20,6 +20,7 @@ let occupied;
 let phase = "EXTRACT";
 const env = {
   ...process.env,
+  MAYHEM_DATA_DIR: path.join(smoke, "사용자 문서", "mayhem-pocket"),
   PORT: "14319",
   ARAMGG_API_KEY: "",
   MAYHEM_POCKET_NO_BROWSER: "1",
@@ -68,7 +69,7 @@ const dir = path.join(smoke, name);
 async function status() {
   try {
     const i = JSON.parse(
-      await readFile(path.join(dir, "cache/instance.json"), "utf8"),
+      await readFile(path.join(env.MAYHEM_DATA_DIR, "instance.json"), "utf8"),
     );
     const result = await (
       await fetch(`http://127.0.0.1:${i.port}/api/status`, {
@@ -122,6 +123,7 @@ try {
     "runtime/node.exe",
     "app/server/index.js",
     "dist/web/index.html",
+    "scripts/storage.mjs",
     "실행.cmd",
     "종료.cmd",
     ".env.example",
@@ -195,7 +197,7 @@ try {
     occupied.listen(14319, "127.0.0.1", resolve);
   });
   await writeFile(
-    path.join(dir, "cache/instance.json"),
+    path.join(env.MAYHEM_DATA_DIR, "instance.json"),
     JSON.stringify({ port: 14319, pid: 999999, token: "stale-test" }),
   );
   const third = await start();

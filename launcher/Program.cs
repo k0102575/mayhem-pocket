@@ -17,6 +17,7 @@ using System.Windows.Forms;
 internal static class Program
 {
     internal static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
+    internal static readonly string Data = Environment.GetEnvironmentVariable("MAYHEM_DATA_DIR") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "mayhem-pocket");
     internal static readonly string Logs = Path.Combine(Root, "logs");
     internal static int Result;
     private static readonly object LogLock = new object();
@@ -29,7 +30,7 @@ internal static class Program
         Application.SetCompatibleTextRenderingDefault(false);
         string identity;
         using (var sha = SHA256.Create())
-            identity = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(Root.TrimEnd('\\').ToUpperInvariant()))).Replace("-", "");
+            identity = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(Path.GetFullPath(Data).TrimEnd('\\').ToUpperInvariant()))).Replace("-", "");
         using (var signal = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\MayhemPocket.Open." + identity))
         using (var stopSignal = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\MayhemPocket.Stop." + identity))
         {
@@ -187,7 +188,7 @@ internal sealed class TrayServer : ApplicationContext
                 if (failures >= 3)
                 {
                     // A web shutdown removes instance.json. Never leave a stale running tray icon behind.
-                    if (!File.Exists(Path.Combine(Program.Root, "cache", "instance.json"))) ExitThread();
+                    if (!File.Exists(Path.Combine(Program.Data, "instance.json"))) ExitThread();
                     else
                     {
                         Program.Report("서버 연결이 끊어졌습니다. 다시 실행해 주세요.", new Exception("상태 확인 실패"));
@@ -205,8 +206,6 @@ internal sealed class TrayServer : ApplicationContext
         var node = Path.Combine(Program.Root, "runtime", "node.exe");
         var entry = Path.Combine(Program.Root, "app", "server", "index.js");
         if (!File.Exists(node) || !File.Exists(entry)) throw new FileNotFoundException("압축을 모두 푼 실행용 ZIP이 필요합니다.");
-        var env = Path.Combine(Program.Root, ".env");
-        if (!File.Exists(env)) File.Copy(Path.Combine(Program.Root, ".env.example"), env, false);
         Directory.CreateDirectory(Program.Logs);
         instance = ReadInstance();
         if (!await Matches(instance))
@@ -222,6 +221,7 @@ internal sealed class TrayServer : ApplicationContext
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8
             };
+            info.EnvironmentVariables["MAYHEM_DATA_DIR"] = Program.Data;
             server = new Process { StartInfo = info };
             server.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) Program.Log(e.Data); };
             server.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) Program.Log(e.Data); };
@@ -260,7 +260,7 @@ internal sealed class TrayServer : ApplicationContext
     {
         try
         {
-            var value = json.Deserialize<Instance>(File.ReadAllText(Path.Combine(Program.Root, "cache", "instance.json")));
+            var value = json.Deserialize<Instance>(File.ReadAllText(Path.Combine(Program.Data, "instance.json")));
             return value != null && value.port > 0 && value.port <= 65535 && !String.IsNullOrEmpty(value.token) ? value : null;
         }
         catch { return null; }

@@ -1537,3 +1537,29 @@ header {
     margin: 12px 15px;
   }
 }
+
+.api-key-form {
+  display: block;
+}
+.api-key-form p {
+  margin: 6px 0 12px;
+}
+.api-key-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.api-key-controls input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #555862;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+}
+.api-key-controls input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

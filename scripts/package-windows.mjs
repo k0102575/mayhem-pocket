@@ -48,6 +48,7 @@ execFileSync(process.execPath, ["scripts/build-launcher.mjs", dir], {
 await cp(".env.example", path.join(dir, ".env.example"));
 await mkdir(path.join(dir, "scripts"), { recursive: true });
 await cp("scripts/stop.mjs", path.join(dir, "scripts/stop.mjs"));
+await cp("scripts/storage.mjs", path.join(dir, "scripts/storage.mjs"));
 await cp("scripts/start.cmd", path.join(dir, "실행.cmd"));
 await cp("scripts/stop.cmd", path.join(dir, "종료.cmd"));
 await cp("README.md", path.join(dir, "README.md"));

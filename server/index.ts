@@ -22,9 +22,12 @@ import {
   assertVersion,
   sanitizeSettings,
 } from "./cache-policy";
+import { dataDirectory } from "../scripts/storage.mjs";
+import { migrateLegacyCache } from "./storage";
 const root = process.cwd();
 loadEnv({ path: path.join(root, ".env"), quiet: true } as any);
-const cache = path.join(root, "cache");
+const cache = dataDirectory();
+await migrateLegacyCache(path.join(root, "cache"), cache);
 await mkdir(cache, { recursive: true });
 const token = randomBytes(24).toString("hex");
 const app = Fastify({ logger: false });
@@ -47,7 +50,22 @@ let credits: any = await read("credits.json");
 let remote: any = null;
 let checkedAt: string | null = null;
 let checkError: string | null = null;
-const apiKey = process.env.ARAMGG_API_KEY ?? "";
+const storedCredentials = await read("credentials.json");
+let apiKey =
+  storedCredentials?.apiKey || process.env.ARAMGG_API_KEY?.trim() || "";
+async function storeApiKey(value: string) {
+  const destination = path.join(cache, "credentials.json");
+  const temporary = destination + "." + randomBytes(6).toString("hex") + ".tmp";
+  try {
+    await writeFile(temporary, JSON.stringify({ apiKey: value }), {
+      mode: 0o600,
+    });
+    await rename(temporary, destination);
+  } finally {
+    await unlink(temporary).catch(() => {});
+  }
+}
+if (!storedCredentials?.apiKey && apiKey) await storeApiKey(apiKey);
 const creditView = () => creditState(credits, apiKey);
 async function saveEnvelope(p: string, d: any) {
   const value = stamp(d);
@@ -77,8 +95,7 @@ function remaining() {
   return creditView().remaining;
 }
 async function upstream(resource: string, cost = 0) {
-  if (cost && !process.env.ARAMGG_API_KEY)
-    throw Error(".env에 ARAMGG_API_KEY를 설정하고 다시 실행하세요.");
+  if (cost && !apiKey) throw Error("화면에서 API 키를 등록해 주세요.");
   if (cost && remaining() < cost)
     throw Error("오늘 무료 할당량이 부족합니다. 기존 캐시를 사용합니다.");
   const wait = Math.max(0, 1100 - (Date.now() - lastCall));
@@ -87,9 +104,7 @@ async function upstream(resource: string, cost = 0) {
     throw Error("수집을 중단했습니다. 다시 누르면 이어받습니다.");
   lastCall = Date.now();
   const res = await fetch("https://data.dtodo.cn/api/v1/ko/" + resource, {
-    headers: cost
-      ? { Authorization: "Bearer " + process.env.ARAMGG_API_KEY }
-      : {},
+    headers: cost ? { Authorization: "Bearer " + apiKey } : {},
     signal: AbortSignal.timeout(25000),
   });
   if (res.headers.has("x-credits-remaining")) {
@@ -104,7 +119,7 @@ async function upstream(resource: string, cost = 0) {
   }
   if (res.status === 401)
     throw Error(
-      "API 키 인증에 실패했습니다. .env의 키를 확인하고 재실행하세요.",
+      "API 키 인증에 실패했습니다. 데이터 관리에서 API 키를 변경해 주세요.",
     );
   if (res.status === 429)
     throw Error(
@@ -141,7 +156,7 @@ app.setErrorHandler((err, req, reply) => {
 });
 app.get("/api/status", async () => ({
   token,
-  hasKey: !!process.env.ARAMGG_API_KEY,
+  hasKey: !!apiKey,
   credits: remaining(),
   creditsEstimated: creditView().estimated,
   creditsCheckedAt: creditView().checkedAt,
@@ -153,6 +168,21 @@ app.get("/api/status", async () => ({
   remoteVersion: remote?.dataVersion,
   job,
 }));
+app.post("/api/credentials", async (req) => {
+  if (active)
+    throw Error("다운로드 또는 키 저장이 끝난 뒤 다시 시도해 주세요.");
+  const value = (req.body as any)?.apiKey;
+  if (typeof value !== "string" || !/^[\x21-\x7e]{1,512}$/.test(value.trim()))
+    throw Error("공백 없이 올바른 API 키를 입력해 주세요.");
+  active = true;
+  try {
+    await storeApiKey(value.trim());
+    apiKey = value.trim();
+    return { saved: true };
+  } finally {
+    active = false;
+  }
+});
 app.get("/api/champions", async () => catalog?.data ?? []);
 app.post("/api/check", async () => {
   return checkRemote();

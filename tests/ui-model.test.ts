@@ -24,6 +24,33 @@ test("champion search ignores whitespace while retaining initials and aliases", 
   assert.equal(matches("블라디미르", "탐켄"), false);
 });
 
+test("champion and augment initials accept IME-combined consonants", () => {
+  for (const query of ["ㅂㄹㅅ", "ㅂㄽ", " ㅂ ㄽ "]) {
+    assert.equal(matches("바루스", query), true, query);
+  }
+  // Cover every compound consonant with syllables whose initials match it.
+  for (const [text, combined] of [
+    ["가사", "ㄳ"],
+    ["나자", "ㄵ"],
+    ["나하", "ㄶ"],
+    ["라가", "ㄺ"],
+    ["라마", "ㄻ"],
+    ["라바", "ㄼ"],
+    ["라사", "ㄽ"],
+    ["라타", "ㄾ"],
+    ["라파", "ㄿ"],
+    ["라하", "ㅀ"],
+    ["바사", "ㅄ"],
+  ]) {
+    assert.equal(matches(text, combined), true, combined);
+  }
+  assert.equal(matches("신비한 주먹", "ㅅㅂㅎㅈㅁ"), true);
+  assert.equal(matches("마법사", "ㅁㅄ"), true);
+  assert.equal(matches("바루스", "ㅂㄻ"), false);
+  assert.equal(matches("탐 켄치", "ㅌㅋㅊ"), true);
+  assert.equal(matches("바루스", "바루"), true);
+});
+
 test("overview ranks ten augments independently and preserves input data", () => {
   const augments = Array.from({ length: 12 }, (_, i) => ({
     id: i,

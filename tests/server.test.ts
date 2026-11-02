@@ -24,7 +24,12 @@ test("loopback lifecycle protects writes and serves cached data without credenti
     ],
     {
       cwd: root,
-      env: { ...process.env, PORT: "14318", ARAMGG_API_KEY: "" },
+      env: {
+        ...process.env,
+        MAYHEM_DATA_DIR: path.join(root, "cache"),
+        PORT: "14318",
+        ARAMGG_API_KEY: "",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
