@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import {
+  commonBuildBoots,
+  separateBuildBoots,
   championTiers,
   matches,
   summaryAugments,
@@ -164,6 +166,29 @@ function CoreItemImages({ items }: { items: any[] }) {
 }
 const buildLabel = (build: any) =>
   Object.values(build?.tags ?? {}).join(" · ") || "추천 빌드";
+function BuildBoots({ boots }: { boots: any[] }) {
+  return (
+    <section className="build-boots" aria-label="신발">
+      <h4>공통 신발</h4>
+      {boots.length ? (
+        <div className="situational">
+          {boots.map((item: any) => (
+            <div title={item.name} key={item.id ?? item.name}>
+              <Icon
+                url={item.iconUrl}
+                name={item.name ?? String(item.id)}
+                size={42}
+              />
+              <small>{item.name ?? item.id}</small>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">저장된 신발 정보가 없습니다.</p>
+      )}
+    </section>
+  );
+}
 function BuildPreparation({ build }: { build: any }) {
   const spellPairs = (build?.summonerSpells ?? [])
     .filter((row: any) => row.spells?.length)
@@ -576,10 +601,15 @@ export default function App() {
         ),
     [d, rarity, aq, sort],
   );
+  const builds = useMemo(
+    () => (d?.builds ?? []).map(separateBuildBoots),
+    [d?.builds],
+  );
+  const boots = commonBuildBoots(builds);
   const overviewAugments = summaryAugments(d?.augments);
-  const overviewCoreBuilds = summaryCoreBuilds(d?.builds);
-  const overviewBuild = summaryBuild(d?.builds);
-  const secondaryBuilds = secondarySummaryBuilds(d?.builds);
+  const overviewCoreBuilds = summaryCoreBuilds(builds);
+  const overviewBuild = summaryBuild(builds);
+  const secondaryBuilds = secondarySummaryBuilds(builds);
   if (ended)
     return (
       <main className="ended">
@@ -1241,6 +1271,7 @@ export default function App() {
                           )}
                         </div>
                       </section>
+                      <BuildBoots boots={boots} />
                       <section
                         className="overview-build"
                         aria-labelledby="overview-items"
@@ -1308,7 +1339,9 @@ export default function App() {
                             </section>
                           )}
                         </div>
-                        <p className="overview-source">일반 칼바람 빌드 참고</p>
+                        <p className="overview-source">
+                          일반 칼바람 빌드 참고 · 신발을 제외한 조합
+                        </p>
                       </section>
                     </div>
                   ) : tab === "augments" ? (
@@ -1384,12 +1417,13 @@ export default function App() {
                           <option value="winRate">승률순</option>
                         </select>
                       </div>
+                      <BuildBoots boots={boots} />
                       {!d.builds?.length && (
                         <div className="empty-small">
                           빌드는 상세 받기로 다운로드할 수 있습니다.
                         </div>
                       )}
-                      {[...(d.builds ?? [])]
+                      {[...builds]
                         .sort((a, b) =>
                           buildSort === "winRate"
                             ? (validRate(b.stats) ?? -1) -
@@ -1411,6 +1445,12 @@ export default function App() {
                                 {count(b.stats?.games)}게임
                               </span>
                             </div>
+                            <h4>핵심 아이템</h4>
+                            <p className="muted build-route-note">
+                              신발 대신 연결된 후속 아이템을 표시합니다. 연결
+                              통계가 없으면 빌드 유형의 후속 추천을 사용하며
+                              조합 승률은 표시하지 않습니다.
+                            </p>
                             {(b.coreItems ?? [])
                               .slice(0, 3)
                               .map((row: any, j: number) => (
@@ -1432,8 +1472,14 @@ export default function App() {
                                     </div>
                                   ))}
                                   <span className="route-stat">
-                                    {pct(validRate(row))}
-                                    <small>{count(row.games)}게임</small>
+                                    {row.games != null
+                                      ? pct(validRate(row))
+                                      : ""}
+                                    <small>
+                                      {row.games != null
+                                        ? `${count(row.games)}게임 · ${row.routeSource}`
+                                        : row.routeSource}
+                                    </small>
                                   </span>
                                 </div>
                               ))}
@@ -1466,7 +1512,7 @@ export default function App() {
       </main>
       <footer>
         <span>
-          Mayhem Pocket <b>v0.1.2</b> · 데이터:{" "}
+          Mayhem Pocket <b>v0.1.4</b> · 데이터:{" "}
           <a href="https://aramgg.com" target="_blank" rel="noreferrer">
             ARAMGG <ArrowUpRight size={11} />
           </a>

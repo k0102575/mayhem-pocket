@@ -1563,3 +1563,20 @@ header {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
+
+.build-boots {
+  margin-bottom: 18px;
+}
+.build-boots h4 {
+  margin: 0 0 10px;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 12px;
+}
+.build-boots .situational {
+  margin-bottom: 0;
+}
+.build-route-note {
+  font-size: 12px;
+  margin: 0 0 12px;
+}

@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  commonBuildBoots,
+  separateBuildBoots,
   championTiers,
   matches,
   summaryAugments,
@@ -176,5 +178,100 @@ test("secondary overview shows only first routes of second and third most-used b
     secondarySummaryBuilds([builds[1], { stats: { pickRate: 0.3 } }])[0].items
       .length,
     0,
+  );
+});
+
+test("boots are separated from routes and follow-up items without changing source statistics", () => {
+  const core = { id: 4633, name: "균열 생성기" };
+  const next = { id: 4629, name: "우주의 추진력" };
+  const shoes = { id: 3020, name: "마법사의 신발" };
+  const boots = { id: 3158, name: "명석함의 아이오니아 장화" };
+  const build = {
+    coreItems: [
+      { items: [core, shoes, next], games: 100, winRate: 0.5 },
+      { items: [core, boots, next], games: 30, winRate: 0.6 },
+      { items: [shoes], games: 1 },
+      { items: [next, core], games: 20 },
+    ],
+    situationalItems: [shoes, { id: 3111, name: "헤르메스의 발걸음" }, next],
+  };
+  const original = structuredClone(build);
+  const result = separateBuildBoots(build);
+  assert.deepEqual(
+    result.boots.map((item: any) => item.id),
+    [3020, 3158, 3111],
+  );
+  assert.deepEqual(
+    result.coreItems.map((row: any) => row.itemIds),
+    [
+      [4633, 4629],
+      [4629, 4633],
+    ],
+  );
+  assert.equal(result.coreItems[0].games, null);
+  assert.equal(result.coreItems[0].winRate, null);
+  assert.deepEqual(result.situationalItems, [next]);
+  assert.deepEqual(build, original);
+  assert.deepEqual(separateBuildBoots({}).boots, []);
+  assert.deepEqual(
+    separateBuildBoots({
+      coreItems: [{ items: [{ id: 99999, name: "새로운 장화" }, core] }],
+    }).boots.map((item: any) => item.id),
+    [99999],
+  );
+});
+
+test("core routes use only matching extensions and common boots are unique", () => {
+  const item = (id: number) => ({ id, name: String(id) });
+  const build = {
+    coreItems: [
+      {
+        itemIds: [4633, 3020, 4629],
+        items: [item(4633), item(3020), item(4629)],
+        games: 100,
+      },
+    ],
+    itemExtensions: [
+      {
+        coreItemIds: [3020, 4633, 4629],
+        step: 1,
+        items: [item(3065)],
+        games: 50,
+        wins: 25,
+        winRate: 0.5,
+      },
+      {
+        coreItemIds: [3020, 4633, 4629],
+        step: 1,
+        items: [item(3089)],
+        games: 20,
+      },
+      {
+        coreItemIds: [3020, 3152, 4629],
+        step: 1,
+        items: [item(999)],
+        games: 999,
+      },
+    ],
+    situationalItems: [{ ...item(3157), pickRate: 0.9 }],
+  };
+  const copy = structuredClone(build);
+  const result = separateBuildBoots(build);
+  assert.deepEqual(
+    result.coreItems.map((row: any) => row.itemIds),
+    [
+      [4633, 4629, 3065],
+      [4633, 4629, 3089],
+    ],
+  );
+  assert.equal(result.coreItems[0].games, 50);
+  assert.equal(result.coreItems[0].winRate, 0.5);
+  assert.deepEqual(build, copy);
+  const fallback = separateBuildBoots({ ...build, itemExtensions: [] });
+  assert.deepEqual(fallback.coreItems[0].itemIds, [4633, 4629, 3157]);
+  assert.equal(fallback.coreItems[0].winRate, null);
+  assert.deepEqual(
+    commonBuildBoots([result, fallback]).map((boot: any) => boot.id),
+    [3020],
   );
 });
