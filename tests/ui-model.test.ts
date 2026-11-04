@@ -210,7 +210,7 @@ test("boots are separated from routes and follow-up items without changing sourc
   );
   assert.equal(result.coreItems[0].games, null);
   assert.equal(result.coreItems[0].winRate, null);
-  assert.deepEqual(result.situationalItems, [next]);
+  assert.deepEqual(result.situationalItems, []);
   assert.deepEqual(build, original);
   assert.deepEqual(separateBuildBoots({}).boots, []);
   assert.deepEqual(
@@ -273,5 +273,36 @@ test("core routes use only matching extensions and common boots are unique", () 
   assert.deepEqual(
     commonBuildBoots([result, fallback]).map((boot: any) => boot.id),
     [3020],
+  );
+});
+
+test("follow-up items exclude all three displayed routes but keep items from hidden routes", () => {
+  const item = (id: number | string) => ({ id, name: String(id) });
+  const build = {
+    coreItems: [
+      { items: [item(1), item(2), item(3)] },
+      { items: [item(4), item(5), item(6)] },
+      { items: [item(7), item(8), item(9)] },
+      { items: [item(10), item(11), item(12)] },
+    ],
+    situationalItems: [item("1"), item(5), item(9), item(10), item(13)],
+  };
+  const original = structuredClone(build);
+  assert.deepEqual(
+    separateBuildBoots(build).situationalItems.map((x: any) => x.id),
+    [10, 13],
+  );
+  assert.deepEqual(build, original);
+  const other = separateBuildBoots({
+    coreItems: [{ items: [item(20), item(21), item(22)] }],
+    situationalItems: [item(1)],
+  });
+  assert.deepEqual(
+    other.situationalItems.map((x: any) => x.id),
+    [1],
+  );
+  assert.deepEqual(
+    separateBuildBoots({ situationalItems: [item(13)] }).situationalItems,
+    [item(13)],
   );
 });

@@ -184,6 +184,52 @@ app.post("/api/credentials", async (req) => {
   }
 });
 app.get("/api/champions", async () => catalog?.data ?? []);
+function descriptionView(envelope: any) {
+  return {
+    version: envelope?.meta?.dataVersion ?? null,
+    downloadedAt: envelope?.cache?.downloadedAt ?? null,
+    data: Array.isArray(envelope?.data)
+      ? envelope.data.map((a: any) => ({
+          id: a.id,
+          description: typeof a.description === "string" ? a.description : null,
+          tooltip: typeof a.tooltip === "string" ? a.tooltip : null,
+        }))
+      : [],
+  };
+}
+app.get("/api/augment-descriptions", async () =>
+  descriptionView(await read("augments.json")),
+);
+app.post("/api/augment-descriptions/download", async () => {
+  if (active) throw Error("다른 다운로드가 진행 중입니다.");
+  active = true;
+  try {
+    const config = await checkRemote();
+    const existing = await read("augments.json");
+    if (
+      existing?.meta?.dataVersion === config.dataVersion &&
+      existing.data?.some((a: any) => a.description || a.tooltip)
+    )
+      return { ...descriptionView(existing), reused: true };
+    const envelope = await upstream("augments.json", 1);
+    assertVersion(envelope, config.dataVersion);
+    if (
+      !Array.isArray(envelope.data) ||
+      !envelope.data.length ||
+      envelope.data.some((a: any) => !Number.isInteger(a?.id))
+    )
+      throw Error("증강 목록 형식 오류");
+    const verified = await checkRemote();
+    if (verified.dataVersion !== config.dataVersion)
+      throw Error(
+        "설명 수집 중 버전이 변경되었습니다. 기존 캐시는 유지됩니다.",
+      );
+    return descriptionView(await saveEnvelope("augments.json", envelope));
+  } finally {
+    active = false;
+  }
+});
+
 app.post("/api/check", async () => {
   return checkRemote();
 });

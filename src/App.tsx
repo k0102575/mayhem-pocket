@@ -1,4 +1,5 @@
 import {
+  useId,
   useEffect,
   useMemo,
   useRef,
@@ -19,6 +20,8 @@ import {
   ChevronRight,
   PackageOpen,
 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { descriptionText } from "./augment-description";
 import { Button } from "./components/ui/button";
 import {
   commonBuildBoots,
@@ -83,6 +86,137 @@ function Icon({
     </span>
   );
 }
+function AugmentName({
+  augment: a,
+  compact,
+}: {
+  augment: any;
+  compact: boolean;
+}) {
+  const tooltipId = useId();
+  const anchor = useRef<HTMLElement | null>(null);
+  const [position, POSITION] = useState<{
+    left: number;
+    top: number;
+    above: boolean;
+    maxHeight: number;
+  } | null>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const text = descriptionText(a.tooltip) || descriptionText(a.description);
+  const clearHide = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+  };
+  const hide = () => {
+    clearHide();
+    hideTimer.current = setTimeout(() => POSITION(null), 150);
+  };
+  useEffect(() => () => clearHide(), []);
+  useEffect(() => {
+    if (!position) return;
+    const close = (event: Event) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest(".augment-tooltip")
+      )
+        return;
+      if (event.type === "scroll" && anchor.current) {
+        const rect = anchor.current.getBoundingClientRect();
+        if (
+          Math.abs(
+            (position.above ? rect.top - 8 : rect.bottom + 8) - position.top,
+          ) < 1
+        )
+          return;
+      }
+      POSITION(null);
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [position]);
+  function show(element: HTMLElement) {
+    anchor.current = element;
+    clearHide();
+    const rect = element.getBoundingClientRect();
+    const width = Math.min(360, window.innerWidth - 24);
+    const belowSpace = window.innerHeight - rect.bottom - 20;
+    const aboveSpace = rect.top - 20;
+    const above = belowSpace < 260 && aboveSpace > belowSpace;
+    POSITION({
+      left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
+      top: above ? rect.top - 8 : rect.bottom + 8,
+      above,
+      maxHeight: Math.max(48, Math.min(260, above ? aboveSpace : belowSpace)),
+    });
+  }
+  return (
+    <>
+      <div
+        className="augment-name augment-tooltip-trigger"
+        tabIndex={0}
+        aria-describedby={position ? tooltipId : undefined}
+        onMouseEnter={(e) => show(e.currentTarget)}
+        onMouseLeave={hide}
+        onFocus={(e) => show(e.currentTarget)}
+        onBlur={() => {
+          clearHide();
+          POSITION(null);
+        }}
+        onClick={(e) => show(e.currentTarget)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            clearHide();
+            POSITION(null);
+            e.stopPropagation();
+          }
+        }}
+      >
+        <Icon
+          url={a.iconUrl}
+          name={a.name ?? String(a.id)}
+          size={compact ? 28 : 36}
+        />
+        <div>
+          {a.name ?? a.id}
+          <small className={a.rarityName}>
+            {a.rarityDisplayName ?? a.rarityName}
+          </small>
+        </div>
+      </div>
+      {position &&
+        createPortal(
+          <div
+            role="tooltip"
+            id={tooltipId}
+            className="augment-tooltip"
+            style={{
+              left: position.left,
+              top: position.top,
+              maxHeight: position.maxHeight,
+              transform: position.above ? "translateY(-100%)" : undefined,
+            }}
+            onMouseEnter={clearHide}
+            onMouseLeave={hide}
+          >
+            <strong>{a.name ?? a.id}</strong>
+            <p>
+              {text || "저장된 설명이 없습니다. 증강 설명 받기를 눌러 주세요."}
+            </p>
+            {text && /\?|@[\w.]+@/.test(text) && (
+              <small>일부 수치는 API에서 제공하지 않습니다.</small>
+            )}
+            {a.descriptionVersion && (
+              <small>설명 데이터 {a.descriptionVersion}</small>
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 function AugmentTable({
   augments,
   compact = false,
@@ -116,19 +250,7 @@ function AugmentTable({
                 </span>
               </td>
               <td>
-                <div className="augment-name">
-                  <Icon
-                    url={a.iconUrl}
-                    name={a.name ?? String(a.id)}
-                    size={compact ? 28 : 36}
-                  />
-                  <div>
-                    {a.name ?? a.id}
-                    <small className={a.rarityName}>
-                      {a.rarityDisplayName ?? a.rarityName}
-                    </small>
-                  </div>
-                </div>
+                <AugmentName augment={a} compact={compact} />
               </td>
               {!compact && (
                 <>
@@ -272,6 +394,7 @@ function usePreference<T>(key: string, fallback: T) {
 export default function App() {
   const [status, S] = useState<any>({});
   const [champs, C] = useState<any[]>([]);
+  const [descriptionData, DESCRIPTIONS] = useState<any>({ data: [] });
   const [id, I, restoreChampion] = usePreference<number | null>(
     "champion",
     null,
@@ -360,7 +483,12 @@ export default function App() {
     return d;
   }
   async function refresh() {
-    const [s, c] = await Promise.all([api("/status"), api("/champions")]);
+    const [s, c, descriptions] = await Promise.all([
+      api("/status"),
+      api("/champions"),
+      api("/augment-descriptions"),
+    ]);
+    DESCRIPTIONS(descriptions);
     S(s);
     C(c);
   }
@@ -586,9 +714,22 @@ export default function App() {
     augmentDates.length > 1
       ? `${augmentDates[0]} ~ ${augmentDates[augmentDates.length - 1]}`
       : (augmentDates[0] ?? "미제공");
+  const describedAugments = useMemo(() => {
+    const descriptions = new Map<number, any>(
+      (descriptionData.data ?? []).map((a: any) => [a.id, a]),
+    );
+    return (d?.augments ?? []).map((a: any) => ({
+      ...a,
+      description: descriptions.get(a.id)?.description ?? a.description,
+      tooltip: descriptions.get(a.id)?.tooltip ?? a.tooltip,
+      descriptionVersion: descriptions.has(a.id)
+        ? descriptionData.version
+        : currentVersion,
+    }));
+  }, [d?.augments, descriptionData, currentVersion]);
   const augments = useMemo(
     () =>
-      [...(d?.augments ?? [])]
+      [...describedAugments]
         .filter(
           (a) =>
             (rarity === "all" || a.rarityName === rarity) &&
@@ -599,14 +740,14 @@ export default function App() {
             ? (validRate(b.stats) ?? -1) - (validRate(a.stats) ?? -1)
             : (a.stats?.rank ?? 9999) - (b.stats?.rank ?? 9999),
         ),
-    [d, rarity, aq, sort],
+    [describedAugments, rarity, aq, sort],
   );
   const builds = useMemo(
     () => (d?.builds ?? []).map(separateBuildBoots),
     [d?.builds],
   );
   const boots = commonBuildBoots(builds);
-  const overviewAugments = summaryAugments(d?.augments);
+  const overviewAugments = summaryAugments(describedAugments);
   const overviewCoreBuilds = summaryCoreBuilds(builds);
   const overviewBuild = summaryBuild(builds);
   const secondaryBuilds = secondarySummaryBuilds(builds);
@@ -1234,6 +1375,36 @@ export default function App() {
                       </dl>
                     </details>
                   </div>
+                  {tab !== "builds" && (
+                    <div className="augment-description-controls">
+                      <span className="muted">
+                        증강에 마우스를 올리면 능력 설명을 볼 수 있습니다.
+                      </span>
+                      <Button
+                        variant="ghost"
+                        disabled={busy || status.job?.running}
+                        onClick={() =>
+                          void action(async () => {
+                            const result = await api(
+                              "/augment-descriptions/download",
+                              {},
+                            );
+                            DESCRIPTIONS(result);
+                            N(
+                              result.reused
+                                ? "저장된 증강 설명을 확인했습니다."
+                                : "증강 설명 다운로드가 완료됐습니다.",
+                            );
+                          })
+                        }
+                      >
+                        {descriptionData.data?.length
+                          ? "증강 설명 갱신"
+                          : "증강 설명 받기"}{" "}
+                        · 최대 1
+                      </Button>
+                    </div>
+                  )}
                   {detail.buildStale && (
                     <div className="notice stale-build-note">
                       이전 빌드 데이터 사용 중 · 증강과 빌드의 버전이 다릅니다.
@@ -1496,10 +1667,6 @@ export default function App() {
                                 </div>
                               </>
                             )}
-                            <details className="metadata build-preparation-details">
-                              <summary>주문·스킬</summary>
-                              <BuildPreparation build={b} />
-                            </details>
                           </article>
                         ))}
                     </div>

@@ -254,3 +254,65 @@ test("full same-version detail skips raw cost and interruption can resume", asyn
     await b.close();
   }
 });
+
+test("augment descriptions download once per version and preserve old cache on version changes", async () => {
+  const envelope = {
+    meta: { dataVersion: "v2" },
+    data: [
+      {
+        id: 1001,
+        description: "방어력을 얻습니다.",
+        tooltip: "방어력 ?<br>효과",
+        stats: { games: 10 },
+      },
+    ],
+  };
+  const a = await launch(
+    {},
+    {
+      "config.json": [{ dataVersion: "v2" }],
+      "augments.json": [envelope, { status: 500 }],
+    },
+  );
+  try {
+    const before = await (
+      await fetch(a.base + "/api/augment-descriptions")
+    ).json();
+    assert.deepEqual(before.data, []);
+    const downloaded = await a.request("/api/augment-descriptions/download");
+    assert.equal(downloaded.status, 200);
+    assert.equal(downloaded.body.data[0].tooltip, "방어력 ?<br>효과");
+    assert.equal(downloaded.body.data[0].stats, undefined);
+    assert.equal(
+      (await a.request("/api/augment-descriptions/download")).body.reused,
+      true,
+    );
+    const cached = await (
+      await fetch(a.base + "/api/augment-descriptions")
+    ).json();
+    assert.equal(cached.version, "v2");
+    assert.ok(cached.downloadedAt);
+  } finally {
+    await a.close();
+  }
+  const b = await launch(
+    { "augments.json": envelope },
+    {
+      "config.json": [{ dataVersion: "v3" }, { dataVersion: "v4" }],
+      "augments.json": [{ ...envelope, meta: { dataVersion: "v3" } }],
+    },
+  );
+  try {
+    assert.equal(
+      (await b.request("/api/augment-descriptions/download")).status,
+      400,
+    );
+    assert.equal(
+      (await (await fetch(b.base + "/api/augment-descriptions")).json())
+        .version,
+      "v2",
+    );
+  } finally {
+    await b.close();
+  }
+});

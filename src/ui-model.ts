@@ -192,7 +192,21 @@ export function separateBuildBoots(build: any) {
       ];
     });
   });
-  return { ...build, coreItems, situationalItems, boots: [...boots.values()] };
+  const displayedItemIds = new Set(
+    coreItems
+      .slice(0, 3)
+      .flatMap((row: any) =>
+        row.items.map((item: any) => String(item.id ?? item.name)),
+      ),
+  );
+  return {
+    ...build,
+    coreItems,
+    situationalItems: situationalItems.filter(
+      (item: any) => !displayedItemIds.has(String(item.id ?? item.name)),
+    ),
+    boots: [...boots.values()],
+  };
 }
 export function commonBuildBoots(builds: any[] = []) {
   const boots = new Map<string, any>();
