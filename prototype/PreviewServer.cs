@@ -129,7 +129,13 @@ internal sealed class PreviewServer : IDisposable
                 if (method == "POST")
                 {
                     if (route == "/api/shutdown") { result = new { ok=true }; stopAfterReply=true; }
-                    else if (route == "/api/settings") { try { result = Sanitize(json.DeserializeObject(Encoding.UTF8.GetString(body))); Save("settings.json",result); } catch { await Error(stream,400,"설정 형식 오류"); return; } }
+                    else if (route == "/api/settings")
+                    {
+                        var invalid = false;
+                        try { result = Sanitize(json.DeserializeObject(Encoding.UTF8.GetString(body))); Save("settings.json",result); }
+                        catch { invalid = true; }
+                        if (invalid) { await Error(stream,400,"설정 형식 오류"); return; }
+                    }
                     else { await Error(stream,501,"C# 시제품은 저장된 데이터 조회만 지원합니다. API 다운로드와 키 등록은 정식 버전을 사용해 주세요."); return; }
                 }
                 else if (route == "/api/status")
@@ -176,7 +182,12 @@ internal sealed class PreviewServer : IDisposable
             }
         }
         catch (Exception e) { Program.Log("시제품 요청 오류: "+e.GetType().Name); client.Close(); }
-        finally { slots.Release(); if (stopAfterReply) { await Task.Delay(100); Dispose(); shutdown(); } }
+        finally { slots.Release(); if (stopAfterReply) FinishShutdown(); }
+    }
+    private async void FinishShutdown()
+    {
+        await Task.Delay(100);
+        try { Dispose(); } finally { shutdown(); }
     }
     private Task Error(NetworkStream stream,int code,string message) { return Reply(stream,code,"application/json; charset=utf-8",Encoding.UTF8.GetBytes(json.Serialize(new {error=message})),false); }
     private static async Task Reply(NetworkStream stream,int code,string type,byte[] body,bool head)
@@ -210,6 +221,6 @@ internal sealed class PreviewServer : IDisposable
         if(stopped) return;
         stopped=true;
         if(listener!=null) listener.Stop();
-        lock(storageLock) { if(Get(Read("instance.json"),"token") as string==Info.token) File.Delete(Path.Combine(Program.Data,"instance.json")); }
+        lock(storageLock) { if(Info != null && Get(Read("instance.json"),"token") as string==Info.token) File.Delete(Path.Combine(Program.Data,"instance.json")); }
     }
 }
