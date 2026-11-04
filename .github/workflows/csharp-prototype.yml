@@ -2,6 +2,7 @@ name: CSharp Prototype
 on:
   push:
     branches: [codex/csharp-server-prototype]
+    tags: ["csharp-test-*"]
 permissions:
   contents: read
 jobs:
@@ -24,6 +25,31 @@ jobs:
         with:
           name: csharp-prototype-comparison
           path: |
+            release/mayhem-pocket-csharp-preview.zip
+            release/mayhem-pocket-csharp-preview.zip.sha256
+            release/prototype-comparison.json
+            release/prototype-comparison.md
+  publish:
+    if: startsWith(github.ref, 'refs/tags/csharp-test-')
+    needs: prototype
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: csharp-prototype-comparison
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: "C# 시제품 0.1.0 · 비교 테스트용"
+          prerelease: false
+          make_latest: "false"
+          generate_release_notes: false
+          body_path: prototype/RELEASE.md
+          fail_on_unmatched_files: true
+          files: |
             release/mayhem-pocket-csharp-preview.zip
             release/mayhem-pocket-csharp-preview.zip.sha256
             release/prototype-comparison.json
