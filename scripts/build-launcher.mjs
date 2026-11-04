@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, access } from "node:fs/promises";
 import path from "node:path";
 if (process.platform !== "win32") throw Error("Windows에서 실행하세요.");
+const prototype = process.argv.includes("--prototype");
 const out = path.resolve(process.argv[2] ?? "dist/launcher");
 await mkdir(out, { recursive: true });
 const compiler = path.join(
@@ -17,6 +18,9 @@ try {
     compiler,
     [
       "/nologo",
+      ...(prototype
+        ? ["/define:CSHARP_PROTOTYPE", "/reference:System.Web.dll"]
+        : []),
       "/target:winexe",
       "/platform:x64",
       "/optimize+",
@@ -28,6 +32,7 @@ try {
       "/reference:System.Web.Extensions.dll",
       `/out:${path.join(out, "Mayhem Pocket.exe")}`,
       path.resolve("launcher/Program.cs"),
+      ...(prototype ? [path.resolve("prototype/PreviewServer.cs")] : []),
     ],
     { encoding: "utf8" },
   );

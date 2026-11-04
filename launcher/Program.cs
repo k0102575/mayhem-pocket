@@ -17,7 +17,11 @@ using System.Windows.Forms;
 internal static class Program
 {
     internal static readonly string Root = AppDomain.CurrentDomain.BaseDirectory;
+#if CSHARP_PROTOTYPE
+    internal static readonly string Data = Environment.GetEnvironmentVariable("MAYHEM_DATA_DIR") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "mayhem-pocket-csharp-preview");
+#else
     internal static readonly string Data = Environment.GetEnvironmentVariable("MAYHEM_DATA_DIR") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "mayhem-pocket");
+#endif
     internal static readonly string Logs = Path.Combine(Root, "logs");
     internal static int Result;
     private static readonly object LogLock = new object();
@@ -104,6 +108,9 @@ internal sealed class TrayServer : ApplicationContext
     private readonly Icon startingIcon;
     private readonly Icon runningIcon;
     private readonly JavaScriptSerializer json = new JavaScriptSerializer();
+#if CSHARP_PROTOTYPE
+    private PreviewServer preview;
+#endif
     private Process server;
     private OwnedJob job;
     private Instance instance;
@@ -203,6 +210,13 @@ internal sealed class TrayServer : ApplicationContext
 
     private async Task StartServer()
     {
+#if CSHARP_PROTOTYPE
+        await Task.Yield();
+        var ui = SynchronizationContext.Current;
+        preview = new PreviewServer(delegate { ui.Post(delegate(object ignored) { ExitThread(); }, null); });
+        preview.Start();
+        instance = preview.Info;
+#else
         var node = Path.Combine(Program.Root, "runtime", "node.exe");
         var entry = Path.Combine(Program.Root, "app", "server", "index.js");
         if (!File.Exists(node) || !File.Exists(entry)) throw new FileNotFoundException("압축을 모두 푼 실행용 ZIP이 필요합니다.");
@@ -241,6 +255,7 @@ internal sealed class TrayServer : ApplicationContext
             }
             if (!ready) throw new TimeoutException("서버 시작 제한 시간을 초과했습니다.");
         }
+#endif
         SetRunning();
         stopItem.Enabled = true;
         pendingOpen = false;
@@ -328,6 +343,9 @@ internal sealed class TrayServer : ApplicationContext
         closed = true;
         timer.Stop();
         tray.Visible = false;
+#if CSHARP_PROTOTYPE
+        if (preview != null) preview.Dispose();
+#endif
         if (job != null) { job.Dispose(); job = null; }
         base.ExitThreadCore();
     }

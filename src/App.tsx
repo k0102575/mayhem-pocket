@@ -1081,7 +1081,7 @@ export default function App() {
           }
         </section>
       )}
-      {status.token && (!status.hasKey || editingKey) && (
+      {status.token && !status.prototype && (!status.hasKey || editingKey) && (
         <form
           className="alert api-key-form"
           aria-label={status.hasKey ? "API 키 변경" : "최초 API 키 등록"}
