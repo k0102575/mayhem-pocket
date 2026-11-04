@@ -6,6 +6,7 @@ import {
   mkdir,
   rename,
   writeFile,
+  readdir,
 } from "node:fs/promises";
 import { createServer } from "node:http";
 import assert from "node:assert/strict";
@@ -121,6 +122,8 @@ try {
   for (const file of [
     "Mayhem Pocket.exe",
     "runtime/node.exe",
+    "runtime/LICENSE",
+    "app/server/THIRD_PARTY_LICENSES.txt",
     "app/server/index.js",
     "dist/web/index.html",
     "scripts/storage.mjs",
@@ -129,14 +132,34 @@ try {
     ".env.example",
   ])
     await access(path.join(dir, file));
-  for (const file of [".env", "data", "backups", "cache", "logs"]) {
+  for (const file of [
+    ".env",
+    "data",
+    "backups",
+    "cache",
+    "logs",
+    "app/node_modules",
+    "node_modules",
+    "runtime/node_modules",
+    "runtime/npm.cmd",
+    "runtime/npx.cmd",
+    "app/package-lock.json",
+  ]) {
     try {
       await access(path.join(dir, file));
-      throw Error("개인 파일 포함: " + file);
+      throw Error("배포 제외 파일 포함: " + file);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
   }
+  assert.deepEqual((await readdir(path.join(dir, "runtime"))).sort(), [
+    "LICENSE",
+    "node.exe",
+  ]);
+  assert.deepEqual((await readdir(path.join(dir, "app"))).sort(), [
+    "package.json",
+    "server",
+  ]);
   const executable = await readFile(path.join(dir, "Mayhem Pocket.exe"));
   const pe = executable.readUInt32LE(0x3c);
   assert.equal(

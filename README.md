@@ -43,6 +43,8 @@ npm start
 
 `package.json` 버전과 일치하는 `v0.1.0` 같은 태그를 push하면 Windows CI가 검사·빌드·공식 Node 런타임 포함 ZIP·SHA-256을 생성하고 정식 릴리스를 게시합니다. API 키는 CI에 필요 없습니다. 로컬 패키징은 Windows에서 `npm run package:windows`로 실행합니다.
 
+배포본에는 의존성을 묶은 서버와 화면 파일, Node 실행 파일 및 라이선스만 포함합니다. node_modules나 npm 설치는 필요하지 않습니다. 서버·화면 의존성 라이선스는 app/server/THIRD_PARTY_LICENSES.txt에 포함합니다.
+
 Windows 10 실사용과 게임 병행 메모리 사용은 실제 PC에서 별도로 검증해야 합니다.
 
 [설계](docs/design.md) · [제3자 고지](THIRD_PARTY_NOTICES.md)

@@ -136,3 +136,11 @@ GitHub Actions의 Windows runner에서 타입 검사·관련 테스트·프로�
 상단 `챔피언 / 증강 도감`에서 화면을 전환한다. 도감은 기존 증강 메타데이터 캐시를 재사용하고, 이름·초성 검색과 등급 필터를 함께 적용해 이름순으로 24개씩 표시한다. 선택한 증강의 설명과 상세 효과, 제공자의 `topChampions` 추천 목록을 아래에 표시한다. 추천 챔피언별 승률은 추정하지 않는다. 설명이나 추천 목록이 없으면 안내를 표시한다.
 
 추천 챔피언을 누르면 기존 챔피언 화면으로 이동하며 저장된 상세만 조회한다. 도감 열기·검색·화면 이동은 유료 API를 자동 호출하지 않는다. 도감 다운로드 버튼은 기존 `/api/augment-descriptions/download` 경로를 사용하고 같은 버전의 설명이 있으면 재사용한다. API 키가 없어도 저장된 도감은 열람할 수 있다. 도감에서도 `/`로 검색창을 선택하고 Escape로 검색어를 지울 수 있다.
+
+## 배포 파일 경량화
+
+서버는 `scripts/build-server.mjs`에서 Node 22 대상 ESM으로 의존성까지 묶는다. CommonJS 의존성이 Node 내장 모듈을 읽을 수 있도록 `createRequire`를 제공하고, 빌드 결과의 외부 참조가 Node 내장 모듈뿐인지 검사한다. 서버·화면 의존성의 라이선스 고지는 `app/server/THIRD_PARTY_LICENSES.txt`에 보존한다.
+
+Windows 배포 단계는 npm 설치를 수행하지 않고 묶은 서버, 화면 파일, 최소 package.json을 복사한다. 공식 Node ZIP의 체크섬을 확인한 후 node.exe와 LICENSE만 포함하며 npm·npx·node_modules·package-lock.json은 배포하지 않는다. 사용자 데이터는 기존처럼 문서/mayhem-pocket에 보관되어 배포 폴더와 독립적이다.
+
+node_modules가 없는 별도 한글·공백 경로에서 묶은 서버의 시작, 정적 파일과 캐시 API, 설정 저장, 인증 없는 종료 거부, 정상 종료, 실행 기록 제거, 재실행과 설정 유지를 테스트한다. Windows CI는 생성한 ZIP을 새 폴더에 풀어 런타임 파일 목록과 node_modules 부재를 검사한 뒤 기존 GUI 실행기·중복 실행·웹 종료·종료.cmd·포트 충돌·강제 종료 검증을 수행한다. macOS의 서버 테스트 통과와 실제 Windows 패키지 검증 결과는 구분한다.

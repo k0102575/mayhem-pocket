@@ -28,19 +28,30 @@ execFileSync("powershell.exe", [
   "-Command",
   `Expand-Archive -LiteralPath '${zip}' -DestinationPath '${unpack}' -Force`,
 ]);
+const runtimeSource = path.join(unpack, file.replace(".zip", ""));
+await mkdir(path.join(dir, "runtime"));
 await cp(
-  path.join(unpack, file.replace(".zip", "")),
-  path.join(dir, "runtime"),
-  { recursive: true },
+  path.join(runtimeSource, "node.exe"),
+  path.join(dir, "runtime/node.exe"),
+);
+await cp(
+  path.join(runtimeSource, "LICENSE"),
+  path.join(dir, "runtime/LICENSE"),
 );
 await cp("dist/web", path.join(dir, "dist/web"), { recursive: true });
 await cp("dist/server", path.join(dir, "app/server"), { recursive: true });
-await cp("package.json", path.join(dir, "app/package.json"));
-await cp("package-lock.json", path.join(dir, "app/package-lock.json"));
-execFileSync(
-  "npm.cmd",
-  ["ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"],
-  { cwd: path.join(dir, "app"), stdio: "inherit", shell: true },
+await writeFile(
+  path.join(dir, "app/package.json"),
+  JSON.stringify(
+    {
+      name: pkg.name,
+      version: pkg.version,
+      private: true,
+      type: "module",
+    },
+    null,
+    2,
+  ) + "\n",
 );
 execFileSync(process.execPath, ["scripts/build-launcher.mjs", dir], {
   stdio: "inherit",
