@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  routeFollowUpItems,
   commonBuildBoots,
   separateBuildBoots,
   championTiers,
@@ -304,5 +305,70 @@ test("follow-up items exclude all three displayed routes but keep items from hid
   assert.deepEqual(
     separateBuildBoots({ situationalItems: [item(13)] }).situationalItems,
     [item(13)],
+  );
+});
+
+test("selected routes match original core and extension prefix, returning only next items", () => {
+  const item = (id: number) => ({ id, name: String(id) });
+  const coreItemIds = [100, 3020, 200];
+  const build = {
+    coreItems: [{ itemIds: coreItemIds, items: coreItemIds.map(item) }],
+    itemExtensions: [
+      { coreItemIds, step: 1, items: [item(300)], games: 100 },
+      { coreItemIds, step: 1, items: [item(500)], games: 50 },
+      { coreItemIds, step: 2, items: [item(300), item(400)], games: 30 },
+      { coreItemIds, step: 2, items: [item(300), item(600)], games: 20 },
+      {
+        coreItemIds,
+        step: 3,
+        items: [item(300), item(400), item(700)],
+        games: 10,
+      },
+      { coreItemIds, step: 2, items: [item(500), item(800)], games: 40 },
+      {
+        coreItemIds: [100, 3158, 200],
+        step: 2,
+        items: [item(300), item(900)],
+        games: 90,
+      },
+    ],
+    situationalItems: [item(999)],
+  };
+  const original = structuredClone(build);
+  const normalized = separateBuildBoots(build);
+  assert.deepEqual(
+    routeFollowUpItems(normalized, normalized.coreItems[0]).map((x) => x.id),
+    [400, 600],
+  );
+  assert.deepEqual(
+    routeFollowUpItems(normalized, normalized.coreItems[1]).map((x) => x.id),
+    [800],
+  );
+  assert.deepEqual(routeFollowUpItems(normalized, null), []);
+  assert.deepEqual(build, original);
+  const unlinked = separateBuildBoots({ ...build, itemExtensions: [] });
+  assert.deepEqual(routeFollowUpItems(unlinked, unlinked.coreItems[0]), []);
+});
+
+test("duplicate visible routes retain all original sources for their follow-up items", () => {
+  const item = (id: number) => ({ id, name: String(id) });
+  const a = [100, 3020, 200],
+    b = [100, 3158, 200];
+  const build = separateBuildBoots({
+    coreItems: [
+      { itemIds: a, items: a.map(item) },
+      { itemIds: b, items: b.map(item) },
+    ],
+    itemExtensions: [
+      { coreItemIds: a, step: 1, items: [item(300)], games: 100 },
+      { coreItemIds: b, step: 1, items: [item(300)], games: 40 },
+      { coreItemIds: a, step: 2, items: [item(300), item(400)], games: 20 },
+      { coreItemIds: b, step: 2, items: [item(300), item(500)], games: 10 },
+    ],
+  });
+  assert.equal(build.coreItems.length, 1);
+  assert.deepEqual(
+    routeFollowUpItems(build, build.coreItems[0]).map((x) => x.id),
+    [400, 500],
   );
 });

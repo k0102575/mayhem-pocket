@@ -22,8 +22,11 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { descriptionText } from "./augment-description";
+import { GameIcon as Icon } from "./components/GameIcon";
+import { AugmentEncyclopedia } from "./components/AugmentEncyclopedia";
 import { Button } from "./components/ui/button";
 import {
+  routeFollowUpItems,
   commonBuildBoots,
   separateBuildBoots,
   championTiers,
@@ -43,49 +46,6 @@ const dateTime = (value: any) =>
     ? new Date(value).toLocaleString("ko-KR")
     : "미기록";
 const count = (n: any) => (typeof n === "number" ? n.toLocaleString() : "—");
-function Icon({
-  url,
-  name,
-  size = 40,
-}: {
-  url?: string;
-  name: string;
-  size?: number;
-}) {
-  const [bad, setBad] = useState(false);
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    setBad(false);
-  }, [url]);
-  useEffect(() => {
-    const reset = () => {
-      setBad(false);
-      setRetry(Date.now());
-    };
-    window.addEventListener("pocket-images-retry", reset);
-    return () => window.removeEventListener("pocket-images-retry", reset);
-  }, []);
-  return url && !bad ? (
-    <img
-      loading="lazy"
-      width={size}
-      height={size}
-      style={{ width: size, height: size }}
-      className="game-icon"
-      src={
-        "/api/image?url=" +
-        encodeURIComponent(url) +
-        (retry ? "&retry=" + retry : "")
-      }
-      alt={name}
-      onError={() => setBad(true)}
-    />
-  ) : (
-    <span className="icon-fallback" style={{ width: size, height: size }}>
-      {name.slice(0, 1)}
-    </span>
-  );
-}
 function AugmentName({
   augment: a,
   compact,
@@ -311,6 +271,112 @@ function BuildBoots({ boots }: { boots: any[] }) {
     </section>
   );
 }
+function ItemBuildCard({ build: b, index: i }: { build: any; index: number }) {
+  const [selectedKey, SELECT] = useState<string | null>(null);
+  const routes = (b.coreItems ?? []).slice(0, 3);
+  const routeKey = (row: any) => JSON.stringify(row.itemIds);
+  const selectedRoute = routes.find(
+    (row: any) => routeKey(row) === selectedKey,
+  );
+  const followups = selectedRoute
+    ? routeFollowUpItems(b, selectedRoute)
+    : (b.situationalItems ?? []);
+  return (
+    <article className="build-card">
+      <div className="build-heading">
+        <h3>
+          <span className="build-number">0{i + 1}</span>
+          {Object.values(b.tags ?? {}).join(" · ") || "추천 빌드"}
+        </h3>
+        <span>
+          픽률 {pct(b.stats?.pickRate)} · 승률 {pct(validRate(b.stats))} ·{" "}
+          {count(b.stats?.games)}게임
+        </span>
+      </div>
+      <h4>핵심 아이템</h4>
+      <p className="muted build-route-note">
+        신발 대신 연결된 후속 아이템을 표시합니다. 연결 통계가 없으면 빌드
+        유형의 후속 추천을 사용하며 조합 승률은 표시하지 않습니다.
+      </p>
+      <p className="muted route-selection-note">
+        핵심 조합을 클릭하면 연결된 다음 아이템을 볼 수 있습니다.
+      </p>
+      {routes.map((row: any, j: number) => (
+        <button
+          type="button"
+          className="item-route selectable-item-route"
+          key={routeKey(row)}
+          aria-pressed={selectedKey === routeKey(row)}
+          aria-label={`핵심 조합 ${j + 1}: ${row.items.map((item: any) => item.name ?? item.id).join(" → ")}`}
+          onClick={() =>
+            SELECT(selectedKey === routeKey(row) ? null : routeKey(row))
+          }
+        >
+          <span className="muted">{j + 1}</span>
+          {row.items?.map((item: any, k: number) => (
+            <span className="item-with-arrow" key={k}>
+              <span className="item">
+                <Icon url={item.iconUrl} name={item.name} size={42} />
+                <small>{item.name}</small>
+              </span>
+              {k < row.items.length - 1 && <ChevronRight size={14} />}
+            </span>
+          ))}
+          <span className="route-stat">
+            {row.games != null ? pct(validRate(row)) : ""}
+            <small>
+              {row.games != null
+                ? `${count(row.games)}게임 · ${row.routeSource}`
+                : row.routeSource}
+            </small>
+          </span>
+        </button>
+      ))}
+      <section className="route-followups" aria-label="후속 아이템">
+        <div className="followup-heading">
+          <h4>
+            {selectedRoute ? "선택한 조합의 다음 아이템" : "공통 후속 아이템"}
+          </h4>
+          {selectedRoute && (
+            <button
+              type="button"
+              className="clear-route"
+              onClick={() => SELECT(null)}
+            >
+              공통 후속 보기
+            </button>
+          )}
+        </div>
+        <div aria-live="polite">
+          {selectedRoute && (
+            <p className="muted route-selection-note">
+              핵심 조합 {routes.indexOf(selectedRoute) + 1} 선택됨
+            </p>
+          )}
+          {followups.length ? (
+            <div className="situational">
+              {followups.map((item: any) => (
+                <div title={item.name} key={item.id}>
+                  <Icon
+                    url={item.iconUrl}
+                    name={item.name ?? String(item.id)}
+                  />
+                  <small>{item.name ?? item.id}</small>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted route-selection-note">
+              {selectedRoute
+                ? "이 조합에 연결된 후속 아이템 정보가 없습니다."
+                : "저장된 공통 후속 아이템이 없습니다."}
+            </p>
+          )}
+        </div>
+      </section>
+    </article>
+  );
+}
 function BuildPreparation({ build }: { build: any }) {
   const spellPairs = (build?.summonerSpells ?? [])
     .filter((row: any) => row.spells?.length)
@@ -393,6 +459,10 @@ function usePreference<T>(key: string, fallback: T) {
 }
 export default function App() {
   const [status, S] = useState<any>({});
+  const [page, PAGE] = useState<"champions" | "encyclopedia">("champions");
+  const activePage = useRef(page);
+  activePage.current = page;
+  const encyclopediaSearch = useRef<HTMLInputElement>(null);
   const [champs, C] = useState<any[]>([]);
   const [descriptionData, DESCRIPTIONS] = useState<any>({ data: [] });
   const [id, I, restoreChampion] = usePreference<number | null>(
@@ -503,7 +573,10 @@ export default function App() {
         !(e.target instanceof HTMLTextAreaElement)
       ) {
         e.preventDefault();
-        input.current?.focus();
+        (activePage.current === "encyclopedia"
+          ? encyclopediaSearch.current
+          : input.current
+        )?.focus();
       }
       if (e.key === "Escape") {
         input.current?.blur();
@@ -677,6 +750,17 @@ export default function App() {
       downloadLock.current = false;
     }
   }
+  async function downloadAugments() {
+    await action(async () => {
+      const result = await api("/augment-descriptions/download", {});
+      DESCRIPTIONS(result);
+      N(
+        result.reused
+          ? "저장된 증강 도감을 확인했습니다."
+          : "증강 도감 다운로드가 완료됐습니다.",
+      );
+    });
+  }
   function select(n: number) {
     I(n);
     R([n, ...recent.filter((x) => x !== n)].slice(0, 8));
@@ -702,7 +786,12 @@ export default function App() {
     return !!x?.data?.rawOnly || !!x?.buildStale;
   }
   const d = detail?.data;
-  const champ = d?.champion ?? champs.find((c) => c.id === id);
+  const champ =
+    d?.champion ??
+    champs.find((c) => c.id === id) ??
+    descriptionData.data
+      ?.flatMap((a: any) => a.topChampions ?? [])
+      .find((c: any) => c.id === id);
   const augmentDates = [
     ...new Set<string>(
       (d?.augments ?? [])
@@ -770,6 +859,24 @@ export default function App() {
             MAYHEM <strong>POCKET</strong>
           </span>
         </a>
+        <nav className="main-navigation" aria-label="주요 화면">
+          <button
+            type="button"
+            aria-current={page === "champions" ? "page" : undefined}
+            aria-controls="champion-page"
+            onClick={() => PAGE("champions")}
+          >
+            챔피언
+          </button>
+          <button
+            type="button"
+            aria-current={page === "encyclopedia" ? "page" : undefined}
+            aria-controls="encyclopedia-page"
+            onClick={() => PAGE("encyclopedia")}
+          >
+            증강 도감
+          </button>
+        </nav>
         <div className="header-right">
           <Button
             variant="ghost"
@@ -804,7 +911,7 @@ export default function App() {
           </Button>
         </div>
       </header>
-      <section className="intro">
+      <section className="intro" hidden={page !== "champions"}>
         <div>
           <div className="eyebrow">ARAM: MAYHEM COMPANION</div>
           <h1>다음 선택을, 조금 더 쉽게.</h1>
@@ -932,7 +1039,8 @@ export default function App() {
           아이콘 다시 받기
         </Button>
       </section>
-      {!managementOpen &&
+      {page === "champions" &&
+        !managementOpen &&
         (status.checkError ||
           checkFailed ||
           (latestVersion && status.catalogVersion !== latestVersion)) && (
@@ -1077,7 +1185,31 @@ export default function App() {
             )}
           </div>
         )}
-      <main className="workspace">
+      <main
+        id="encyclopedia-page"
+        className="encyclopedia-page"
+        hidden={page !== "encyclopedia"}
+        aria-label="증강 도감"
+      >
+        <AugmentEncyclopedia
+          catalog={descriptionData}
+          latestVersion={latestVersion}
+          busy={busy || !!status.job?.running}
+          hasKey={!!status.hasKey}
+          onDownload={() => void downloadAugments()}
+          onSelectChampion={(championId) => {
+            select(championId);
+            PAGE("champions");
+          }}
+          searchRef={encyclopediaSearch}
+        />
+      </main>
+      <main
+        id="champion-page"
+        className="workspace"
+        hidden={page !== "champions"}
+        aria-label="챔피언"
+      >
         <aside>
           <div className="search">
             <Search size={17} />
@@ -1603,71 +1735,11 @@ export default function App() {
                               (a.stats?.pickRate ?? 0),
                         )
                         .map((b, i) => (
-                          <article className="build-card" key={i}>
-                            <div className="build-heading">
-                              <h3>
-                                <span className="build-number">0{i + 1}</span>
-                                {Object.values(b.tags ?? {}).join(" · ") ||
-                                  "추천 빌드"}
-                              </h3>
-                              <span>
-                                픽률 {pct(b.stats?.pickRate)} · 승률{" "}
-                                {pct(validRate(b.stats))} ·{" "}
-                                {count(b.stats?.games)}게임
-                              </span>
-                            </div>
-                            <h4>핵심 아이템</h4>
-                            <p className="muted build-route-note">
-                              신발 대신 연결된 후속 아이템을 표시합니다. 연결
-                              통계가 없으면 빌드 유형의 후속 추천을 사용하며
-                              조합 승률은 표시하지 않습니다.
-                            </p>
-                            {(b.coreItems ?? [])
-                              .slice(0, 3)
-                              .map((row: any, j: number) => (
-                                <div className="item-route" key={j}>
-                                  <span className="muted">{j + 1}</span>
-                                  {row.items?.map((item: any, k: number) => (
-                                    <div className="item-with-arrow" key={k}>
-                                      <div className="item">
-                                        <Icon
-                                          url={item.iconUrl}
-                                          name={item.name}
-                                          size={42}
-                                        />
-                                        <small>{item.name}</small>
-                                      </div>
-                                      {k < row.items.length - 1 && (
-                                        <ChevronRight size={14} />
-                                      )}
-                                    </div>
-                                  ))}
-                                  <span className="route-stat">
-                                    {row.games != null
-                                      ? pct(validRate(row))
-                                      : ""}
-                                    <small>
-                                      {row.games != null
-                                        ? `${count(row.games)}게임 · ${row.routeSource}`
-                                        : row.routeSource}
-                                    </small>
-                                  </span>
-                                </div>
-                              ))}
-                            {b.situationalItems?.length > 0 && (
-                              <>
-                                <h4>후속 아이템 참고</h4>
-                                <div className="situational">
-                                  {b.situationalItems.map((x: any) => (
-                                    <div title={x.name} key={x.id}>
-                                      <Icon url={x.iconUrl} name={x.name} />
-                                      <small>{x.name}</small>
-                                    </div>
-                                  ))}
-                                </div>
-                              </>
-                            )}
-                          </article>
+                          <ItemBuildCard
+                            key={`${id}-${currentVersion}-${builds.indexOf(b)}`}
+                            build={b}
+                            index={i}
+                          />
                         ))}
                     </div>
                   )}

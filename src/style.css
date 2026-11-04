@@ -1631,3 +1631,340 @@ header {
 [data-theme="light"] .augment-tooltip strong {
   color: #70439c;
 }
+
+.selectable-item-route {
+  width: 100%;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-top-color: #292a34;
+  border-radius: 6px;
+  padding: 13px 6px;
+  text-align: left;
+  font: inherit;
+}
+.selectable-item-route:hover {
+  background: #211c2c;
+}
+.selectable-item-route[aria-pressed="true"] {
+  background: #292135;
+  border-color: #a57dde;
+}
+.selectable-item-route:focus-visible {
+  outline: 2px solid #b99bdc;
+  outline-offset: 2px;
+}
+.followup-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 12px;
+}
+.followup-heading h4 {
+  margin: 0;
+}
+.clear-route {
+  color: #c5b0ef;
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+}
+.route-selection-note {
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+[data-theme="light"] .selectable-item-route {
+  border-top-color: #e4deec;
+}
+[data-theme="light"] .selectable-item-route:hover {
+  background: #f4eefb;
+}
+[data-theme="light"] .selectable-item-route[aria-pressed="true"] {
+  background: #eee4fa;
+  border-color: #9163be;
+}
+[data-theme="light"] .clear-route {
+  color: #70439c;
+}
+
+/* 증강 도감 */
+.workspace[hidden],
+.intro[hidden],
+.encyclopedia-page[hidden] {
+  display: none;
+}
+.main-navigation {
+  display: flex;
+  gap: 6px;
+  margin-left: 28px;
+  margin-right: auto;
+}
+.main-navigation button {
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: #9395a4;
+  border-radius: 8px;
+  font-weight: 650;
+}
+.main-navigation button[aria-current="page"] {
+  background: #29223e;
+  color: #c9b6ff;
+}
+.encyclopedia-page {
+  padding: 32px 0 40px;
+}
+.encyclopedia {
+  border: 1px solid #30313b;
+  border-radius: 14px;
+  background: #18191f;
+  padding: 28px;
+}
+.encyclopedia-heading,
+.encyclopedia-controls,
+.encyclopedia-list-heading,
+.encyclopedia-champions-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.encyclopedia h1 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  font-weight: 750;
+}
+.encyclopedia-heading p {
+  margin: 0;
+  font-size: 13px;
+}
+.encyclopedia-version {
+  margin: 18px 0 24px;
+  font-size: 12px;
+}
+.encyclopedia-controls {
+  margin-bottom: 20px;
+}
+.encyclopedia-search {
+  flex: 1;
+  max-width: 440px;
+}
+.encyclopedia-list-heading {
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+.encyclopedia-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.encyclopedia-pagination button {
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border: 1px solid #363743;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
+.encyclopedia-pagination button:disabled {
+  opacity: 0.3;
+}
+.encyclopedia-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+.encyclopedia-augment {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 10px;
+  padding: 12px;
+  min-height: 78px;
+  background: #202128;
+  border: 1px solid #30313b;
+  border-radius: 9px;
+  color: inherit;
+}
+.encyclopedia-augment:hover {
+  border-color: #8270b7;
+}
+.encyclopedia-augment[aria-pressed="true"] {
+  background: #302642;
+  border-color: #b59aff;
+  box-shadow: 0 0 0 1px #b59aff inset;
+}
+.encyclopedia-augment-name {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.encyclopedia-augment-name small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+.encyclopedia .silver {
+  color: #b9c4d2;
+}
+.encyclopedia .gold {
+  color: #e2bd79;
+}
+.encyclopedia .prismatic {
+  color: #c4adff;
+}
+.encyclopedia-detail {
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid #34313f;
+}
+.encyclopedia-detail-heading {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.encyclopedia-rarity {
+  font-size: 12px;
+}
+.encyclopedia h2 {
+  margin: 5px 0 0;
+  font-size: 23px;
+  font-weight: 750;
+}
+.encyclopedia-description {
+  white-space: pre-line;
+  font-size: 14px;
+  line-height: 1.9;
+  margin: 20px 0;
+}
+.encyclopedia-description-more {
+  margin-bottom: 18px;
+}
+.encyclopedia-description-more summary {
+  cursor: pointer;
+}
+.encyclopedia-missing-values {
+  font-size: 12px;
+}
+.encyclopedia-champions-heading {
+  margin-top: 28px;
+  margin-bottom: 16px;
+}
+.encyclopedia h3 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 700;
+}
+.encyclopedia-champions-heading .muted {
+  font-size: 11px;
+}
+.encyclopedia-champions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+.encyclopedia-champions button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #202128;
+  border: 1px solid #30313b;
+  border-radius: 9px;
+  color: inherit;
+  font-size: 13px;
+}
+.encyclopedia-champions button:hover {
+  background: #302642;
+  border-color: #8270b7;
+}
+.encyclopedia-empty {
+  padding: 32px 0;
+}
+[data-theme="light"] .encyclopedia {
+  background: #fff;
+  border-color: #dedde7;
+}
+[data-theme="light"] .encyclopedia-augment,
+[data-theme="light"] .encyclopedia-champions button {
+  background: #f7f7fb;
+  border-color: #dedde7;
+}
+[data-theme="light"] .encyclopedia-augment[aria-pressed="true"],
+[data-theme="light"] .main-navigation button[aria-current="page"] {
+  background: #eee7ff;
+  color: #6534ad;
+}
+[data-theme="light"] .encyclopedia .silver {
+  color: #53647a;
+}
+[data-theme="light"] .encyclopedia .gold {
+  color: #986211;
+}
+[data-theme="light"] .encyclopedia .prismatic {
+  color: #7950b4;
+}
+@media (max-width: 1150px) {
+  .encyclopedia-grid,
+  .encyclopedia-champions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 68px;
+    gap: 12px;
+    padding: 12px 0;
+  }
+  .main-navigation {
+    margin-left: 8px;
+  }
+}
+@media (max-width: 800px) {
+  .encyclopedia-grid,
+  .encyclopedia-champions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .encyclopedia-controls,
+  .encyclopedia-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .encyclopedia-search {
+    width: 100%;
+    max-width: none;
+  }
+  .main-navigation {
+    order: 3;
+    width: 100%;
+    margin: 0;
+  }
+  .header-right {
+    margin-left: auto;
+  }
+}
+@media (max-width: 550px) {
+  .encyclopedia {
+    padding: 18px;
+  }
+  .encyclopedia-grid,
+  .encyclopedia-champions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .encyclopedia-champions-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .encyclopedia-augment,
+  .encyclopedia-champions button {
+    padding: 9px;
+    gap: 8px;
+  }
+}
