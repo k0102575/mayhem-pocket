@@ -1,7 +1,7 @@
 # Mayhem Pocket
 
 광고·게임 연동 없이 필요한 증강과 빌드만 찾는 개인용 로컬 ARAM: Mayhem 도구.
-React + TypeScript + Vite · shadcn/ui · Fastify.
+React + TypeScript + Vite · shadcn/ui · C#/.NET Framework 내장 서버. 개발용 Node 서버도 유지합니다.
 
 ## Windows에서 사용
 
@@ -9,12 +9,12 @@ Releases의 `mayhem-pocket-v…-windows-x64.zip`을 받으세요. GitHub의 Sour
 
 1. ZIP 압축을 쓰기 가능한 폴더에 풉니다.
 2. 별도로 `.env` 파일을 만들 필요가 없습니다.
-3. `Mayhem Pocket.exe`를 더블클릭합니다. 터미널 창 없이 서버와 기본 브라우저를 열고 작업 표시줄 알림 영역에 트레이 아이콘을 표시합니다. Node 별도 설치는 필요 없습니다. 기존 `실행.cmd`도 같은 실행기를 엽니다.
+3. `Mayhem Pocket.exe`를 더블클릭합니다. 터미널 창 없이 서버와 기본 브라우저를 열고 작업 표시줄 알림 영역에 트레이 아이콘을 표시합니다. Windows 기본 .NET Framework를 사용하며 Node 별도 설치는 필요 없습니다. 기존 `실행.cmd`도 같은 실행기를 엽니다.
 4. 처음 열린 화면에서 ARAMGG API 키를 입력하고 저장합니다. 이후 목록 갱신(필요 시 1 credit) 후 챔피언 선택 → 상세 받기(필요 시 2 credits)를 누릅니다.
 5. 종료는 화면의 종료 버튼, 트레이 우클릭 → `서버 종료`, 또는 `종료.cmd`를 사용합니다. 트레이 더블클릭이나 `화면 열기`로 브라우저를 다시 열 수 있습니다.
 
 브라우저 탭만 닫으면 서버와 트레이는 남습니다. 다시 실행해도 서버는 중복 생성되지 않고 기존 화면을 엽니다. 트레이 아이콘은 Windows 알림 영역의 숨겨진 아이콘(∧) 안에 있을 수 있습니다. 실행 오류는 오류창과 `logs/launcher.log`에 기록하며 트레이의 `로그 폴더 열기`로 확인할 수 있습니다. 로그인 시 자동 시작은 등록하지 않습니다.
-업데이트 전 앱을 종료하고 `Mayhem Pocket.exe`, `app/`, `dist/`, `runtime/`, `scripts/`, 실행·종료 스크립트를 교체하세요. API 키는 문서 폴더에 저장되므로 옮길 필요가 없습니다. 기존 `.env`의 키는 최초 실행 시 자동으로 가져옵니다. 캐시와 즐겨찾기·최근 조회 설정은 사용자 문서 폴더의 `mayhem-pocket/`에 저장되므로 실행 폴더를 교체해도 유지됩니다. 기존 실행 폴더에 `cache/`가 있으면 첫 실행 때 새 저장소로 자동 복사하고 원본은 남깁니다. 이미 새 저장소에 있는 파일은 덮어쓰지 않습니다. 이전 실행 폴더를 삭제했다면 그 안의 캐시는 자동 복구할 수 없습니다. 자동 업데이트는 없습니다.
+업데이트 전 앱을 종료하고 새 ZIP을 별도 폴더에 풀어 실행하세요. C# 배포본에는 `app/`, `runtime/`, `node_modules/`가 필요하지 않습니다. API 키는 문서 폴더에 저장되므로 옮길 필요가 없습니다. 기존 `.env`의 키는 최초 실행 시 자동으로 가져옵니다. 캐시와 즐겨찾기·최근 조회 설정은 사용자 문서 폴더의 `mayhem-pocket/`에 저장되므로 실행 폴더를 교체해도 유지됩니다. 기존 실행 폴더에 `cache/`가 있으면 첫 실행 때 새 저장소로 자동 복사하고 원본은 남깁니다. 이미 새 저장소에 있는 파일은 덮어쓰지 않습니다. 이전 실행 폴더를 삭제했다면 그 안의 캐시는 자동 복구할 수 없습니다. 자동 업데이트는 없습니다.
 
 ## 개발
 
@@ -41,9 +41,9 @@ npm start
 
 ## Release
 
-`package.json` 버전과 일치하는 `v0.1.0` 같은 태그를 push하면 Windows CI가 검사·빌드·공식 Node 런타임 포함 ZIP·SHA-256을 생성하고 정식 릴리스를 게시합니다. API 키는 CI에 필요 없습니다. 로컬 패키징은 Windows에서 `npm run package:windows`로 실행합니다.
+`package.json` 버전과 일치하는 `v0.1.0` 같은 태그를 push하면 Windows CI가 검사·빌드·C# 내장 서버 ZIP·SHA-256을 생성하고 정식 릴리스를 게시합니다. API 키는 CI에 필요 없습니다. 로컬 패키징은 Windows에서 `npm run package:windows`로 실행합니다.
 
-배포본에는 의존성을 묶은 서버와 화면 파일, Node 실행 파일 및 라이선스만 포함합니다. node_modules나 npm 설치는 필요하지 않습니다. 서버·화면 의존성 라이선스는 app/server/THIRD_PARTY_LICENSES.txt에 포함합니다.
+배포본에는 C# 실행 파일과 화면 파일, 라이선스만 포함합니다. Node·npm·별도 런타임 설치는 필요하지 않습니다. 의존성 라이선스는 THIRD_PARTY_LICENSES.txt에 포함합니다.
 
 Windows 10 실사용과 게임 병행 메모리 사용은 실제 PC에서 별도로 검증해야 합니다.
 
@@ -51,15 +51,11 @@ Windows 10 실사용과 게임 병행 메모리 사용은 실제 PC에서 별도
 
 ## Windows 실행기 개발
 
-`launcher/Program.cs`는 Windows 기본 .NET Framework의 WinForms 트레이 실행기입니다. 별도의 Chromium이나 웹뷰는 포함하지 않습니다. 패키징 시 Windows의 .NET Framework C# 컴파일러로 GUI 실행 파일을 만들고 Node 프로세스는 창 없이 시작합니다. 서버 상태를 약 2초 간격으로 로컬에서 확인하며 외부 API는 폴링하지 않습니다.
+`launcher/Program.cs`는 Windows 기본 .NET Framework의 WinForms 실행기이며, `launcher/LocalServer.cs`와 `LocalBackend.cs`가 같은 프로세스에서 loopback HTTP 서버와 다운로드·캐시 처리를 담당합니다. 별도의 Chromium·웹뷰·Node 프로세스를 포함하지 않습니다.
 
 - 트레이 메뉴: 실행 상태, 화면 열기, 로그 폴더 열기, 서버 종료.
-- 같은 폴더에서 중복 실행하면 기존 실행기에 화면 열기를 요청합니다.
-- 실행기 소유 Node 프로세스는 Windows Job Object로 묶어 실행기 강제 종료 시 정리합니다. 이미 실행 중인 서버에 연결한 경우 임의로 프로세스를 강제 종료하지 않습니다.
-- Windows CI의 `node scripts/check-windows.mjs`는 ZIP 생성 후 한글·공백 경로, 중복 실행, 종료 경로, 포트 충돌, 이전 실행 기록, 강제 종료 정리와 필수 파일 누락을 검증합니다.
-- `MAYHEM_POCKET_NO_BROWSER=1`은 CI 전용으로 브라우저와 오류창을 생략합니다. `Mayhem Pocket.exe --stop`은 트레이 메뉴와 같은 종료 경로를 호출합니다.
+- 같은 사용자 데이터 폴더로 중복 실행하면 기존 실행기에 화면 열기를 요청합니다.
+- 서버와 트레이가 같은 프로세스이므로 실행기를 강제 종료해도 별도 서버가 남지 않습니다.
+- Windows CI의 `node scripts/check-windows.mjs`는 새 ZIP의 실행·종료 검증과 테스트 제공자를 사용한 C# 다운로드 통합 검증을 수행합니다. 실제 API 키와 유료 호출을 사용하지 않습니다.
+- `MAYHEM_POCKET_NO_BROWSER=1`은 CI에서 브라우저와 오류창을 생략합니다. `Mayhem Pocket.exe --stop`은 트레이 메뉴와 같은 종료 경로를 호출합니다.
 - 실제 Windows 10에서 트레이의 위치·모양, 기본 브라우저 열기, 서명 없는 실행 파일의 보안 안내는 최종 확인이 필요합니다.
-
-개발 환경에서도 기본 데이터 경로는 `~/Documents/mayhem-pocket`입니다. 별도 저장소가 필요하면 `MAYHEM_DATA_DIR` 환경 변수 또는 `.env` 항목으로 지정할 수 있습니다. Windows 실행기는 프로세스 환경 변수의 경로를 우선 사용하며, 기본값은 Windows가 지정한 실제 문서 폴더(OneDrive 이동 포함)입니다. 데이터 이전은 한 번만 수행하므로 업데이트 전에 기존 버전의 서버를 종료하세요.
-
-API 키는 `문서/mayhem-pocket/credentials.json`에 로컬 평문으로 저장되며 브라우저 저장소에는 보관하지 않습니다. 기존 `.env` 또는 환경 변수의 `ARAMGG_API_KEY`는 저장된 키가 없을 때만 가져옵니다. 키를 바꾸려면 화면의 데이터 관리 → API 키 변경을 사용하세요. 키 저장 자체는 인증 확인이나 유료 통계 조회를 하지 않습니다. 실제 인증 오류는 목록·상세 조회 시 표시합니다.

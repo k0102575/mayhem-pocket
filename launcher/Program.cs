@@ -108,7 +108,9 @@ internal sealed class TrayServer : ApplicationContext
     private readonly Icon startingIcon;
     private readonly Icon runningIcon;
     private readonly JavaScriptSerializer json = new JavaScriptSerializer();
-#if CSHARP_PROTOTYPE
+#if CSHARP_SERVER
+    private LocalServer preview;
+#elif CSHARP_PROTOTYPE
     private PreviewServer preview;
 #endif
     private Process server;
@@ -210,10 +212,14 @@ internal sealed class TrayServer : ApplicationContext
 
     private async Task StartServer()
     {
-#if CSHARP_PROTOTYPE
+#if CSHARP_PROTOTYPE || CSHARP_SERVER
         await Task.Yield();
         var ui = SynchronizationContext.Current;
+#if CSHARP_SERVER
+        preview = new LocalServer(delegate { ui.Post(delegate(object ignored) { ExitThread(); }, null); });
+#else
         preview = new PreviewServer(delegate { ui.Post(delegate(object ignored) { ExitThread(); }, null); });
+#endif
         preview.Start();
         instance = preview.Info;
 #else
@@ -343,7 +349,7 @@ internal sealed class TrayServer : ApplicationContext
         closed = true;
         timer.Stop();
         tray.Visible = false;
-#if CSHARP_PROTOTYPE
+#if CSHARP_PROTOTYPE || CSHARP_SERVER
         if (preview != null) preview.Dispose();
 #endif
         if (job != null) { job.Dispose(); job = null; }

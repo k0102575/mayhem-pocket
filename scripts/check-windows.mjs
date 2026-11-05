@@ -4,6 +4,7 @@ if (process.platform !== "win32") throw Error("Windows에서 실행하세요.");
 for (const script of [
   "scripts/package-windows.mjs",
   "scripts/verify-package.mjs",
+  "scripts/verify-csharp-api.mjs",
 ]) {
   const result = spawnSync(process.execPath, [script], {
     encoding: "utf8",

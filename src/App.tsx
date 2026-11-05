@@ -1751,7 +1751,7 @@ export default function App() {
       </main>
       <footer>
         <span>
-          Mayhem Pocket <b>v0.1.5</b> · 데이터:{" "}
+          Mayhem Pocket <b>v0.1.6</b> · 데이터:{" "}
           <a href="https://aramgg.com" target="_blank" rel="noreferrer">
             ARAMGG <ArrowUpRight size={11} />
           </a>

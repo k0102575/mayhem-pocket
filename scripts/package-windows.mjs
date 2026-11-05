@@ -8,74 +8,36 @@ const name = `mayhem-pocket-v${pkg.version}-windows-x64`;
 const dir = path.resolve("release", name);
 await rm(dir, { recursive: true, force: true });
 await mkdir(dir, { recursive: true });
-// Runtime is official Node 22 Windows x64; verify its archive against official SHASUMS.
-const base = "https://nodejs.org/dist/latest-v22.x/";
-const sums = await (await fetch(base + "SHASUMS256.txt")).text();
-const line = sums
-  .split("\n")
-  .find((l) => / node-v[\d.]+-win-x64\.zip$/.test(l));
-if (!line) throw Error("공식 런타임 체크섬을 찾을 수 없습니다.");
-const [hash, file] = line.trim().split(/\s+/);
-const bytes = Buffer.from(await (await fetch(base + file)).arrayBuffer());
-if (createHash("sha256").update(bytes).digest("hex") !== hash)
-  throw Error("Node 체크섬 불일치");
-const zip = path.resolve("release", "node.zip");
-await writeFile(zip, bytes);
-const unpack = path.resolve("release", "node-unpack");
-await rm(unpack, { recursive: true, force: true });
-execFileSync("powershell.exe", [
-  "-NoProfile",
-  "-Command",
-  `Expand-Archive -LiteralPath '${zip}' -DestinationPath '${unpack}' -Force`,
-]);
-const runtimeSource = path.join(unpack, file.replace(".zip", ""));
-await mkdir(path.join(dir, "runtime"));
-await cp(
-  path.join(runtimeSource, "node.exe"),
-  path.join(dir, "runtime/node.exe"),
-);
-await cp(
-  path.join(runtimeSource, "LICENSE"),
-  path.join(dir, "runtime/LICENSE"),
-);
-await cp("dist/web", path.join(dir, "dist/web"), { recursive: true });
-await cp("dist/server", path.join(dir, "app/server"), { recursive: true });
-await writeFile(
-  path.join(dir, "app/package.json"),
-  JSON.stringify(
-    {
-      name: pkg.name,
-      version: pkg.version,
-      private: true,
-      type: "module",
-    },
-    null,
-    2,
-  ) + "\n",
-);
 execFileSync(process.execPath, ["scripts/build-launcher.mjs", dir], {
   stdio: "inherit",
 });
-await cp(".env.example", path.join(dir, ".env.example"));
-await mkdir(path.join(dir, "scripts"), { recursive: true });
-await cp("scripts/stop.mjs", path.join(dir, "scripts/stop.mjs"));
-await cp("scripts/storage.mjs", path.join(dir, "scripts/storage.mjs"));
+await cp("dist/web", path.join(dir, "dist/web"), { recursive: true });
+await cp(
+  "dist/server/THIRD_PARTY_LICENSES.txt",
+  path.join(dir, "THIRD_PARTY_LICENSES.txt"),
+);
+for (const file of ["README.md", "THIRD_PARTY_NOTICES.md", ".env.example"])
+  await cp(file, path.join(dir, file));
 await cp("scripts/start.cmd", path.join(dir, "실행.cmd"));
-await cp("scripts/stop.cmd", path.join(dir, "종료.cmd"));
-await cp("README.md", path.join(dir, "README.md"));
-await cp("THIRD_PARTY_NOTICES.md", path.join(dir, "THIRD_PARTY_NOTICES.md"));
-// Explicit file allowlist above intentionally excludes all local secrets and caches.
+await writeFile(
+  path.join(dir, "종료.cmd"),
+  '@echo off\r\n"%~dp0Mayhem Pocket.exe" --stop\r\n',
+);
 const archive = path.resolve("release", name + ".zip");
 await rm(archive, { force: true });
+const quote = (s) => s.replaceAll("'", "''");
 execFileSync("powershell.exe", [
   "-NoProfile",
   "-Command",
-  `Compress-Archive -LiteralPath '${dir}' -DestinationPath '${archive}' -Force`,
+  `Compress-Archive -LiteralPath '${quote(dir)}' -DestinationPath '${quote(archive)}' -Force`,
 ]);
-const digest = createHash("sha256")
-  .update(await readFile(archive))
-  .digest("hex");
-await writeFile(archive + ".sha256", digest + "  " + name + ".zip\n");
-await rm(zip, { force: true });
-await rm(unpack, { recursive: true, force: true });
+await writeFile(
+  archive + ".sha256",
+  createHash("sha256")
+    .update(await readFile(archive))
+    .digest("hex") +
+    "  " +
+    name +
+    ".zip\n",
+);
 console.log(archive);

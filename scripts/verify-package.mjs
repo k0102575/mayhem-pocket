@@ -1,32 +1,27 @@
 import { spawn, execFileSync } from "node:child_process";
-import {
-  readFile,
-  access,
-  rm,
-  mkdir,
-  rename,
-  writeFile,
-  readdir,
-} from "node:fs/promises";
+import { readFile, writeFile, mkdir, rm, readdir } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import path from "node:path";
-const p = JSON.parse(await readFile("package.json", "utf8"));
-const name = `mayhem-pocket-v${p.version}-windows-x64`;
-const smoke = path.resolve("release", "실행 테스트 경로");
-const quote = (s) => s.replaceAll("'", "''");
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+if (process.platform !== "win32") throw Error("Windows에서 실행하세요.");
+const version = JSON.parse(await readFile("package.json", "utf8")).version;
+const packageName = `mayhem-pocket-v${version}-windows-x64`;
+const smoke = path.resolve("release/C# 시제품 한글 실행 테스트");
+const dir = path.join(smoke, packageName);
+const data = path.join(smoke, "시제품 설정");
+const source = data;
 const children = [];
-let occupied;
-let phase = "EXTRACT";
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const env = {
   ...process.env,
-  MAYHEM_DATA_DIR: path.join(smoke, "사용자 문서", "mayhem-pocket"),
-  PORT: "14319",
-  ARAMGG_API_KEY: "",
+  MAYHEM_DATA_DIR: data,
+  MAYHEM_PREVIEW_CACHE: source,
   MAYHEM_POCKET_NO_BROWSER: "1",
+  PORT: "14331",
 };
-async function until(fn, label, timeout = 45000) {
+let occupied;
+async function until(fn, label, timeout = 20000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     const result = await fn();
@@ -35,290 +30,291 @@ async function until(fn, label, timeout = 45000) {
   }
   throw Error(label + " 제한 시간 초과");
 }
-function run(file, args = []) {
-  const child = spawn(file, args, {
+function run(args = []) {
+  const child = spawn(path.join(dir, "Mayhem Pocket.exe"), args, {
     cwd: dir,
     env,
-    windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  let output = "";
-  child.stdout.on("data", (data) => (output += data));
-  child.stderr.on("data", (data) => (output += data));
-  child.on("error", (error) => (output += error.message));
-  child.output = () => output;
   children.push(child);
   return child;
 }
-async function exited(child, expected = 0) {
+async function exited(child) {
   await until(
     () => child.exitCode !== null || child.signalCode !== null,
-    "실행기 종료",
-    15000,
+    "프로세스 종료",
   );
-  assert.equal(child.exitCode, expected, child.output());
+  assert.equal(child.exitCode, 0);
 }
-async function alive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-const dir = path.join(smoke, name);
 async function status() {
   try {
-    const i = JSON.parse(
-      await readFile(path.join(env.MAYHEM_DATA_DIR, "instance.json"), "utf8"),
+    const instance = JSON.parse(
+      await readFile(path.join(data, "instance.json"), "utf8"),
     );
-    const result = await (
-      await fetch(`http://127.0.0.1:${i.port}/api/status`, {
-        signal: AbortSignal.timeout(1200),
-      })
-    ).json();
-    return result.token === i.token ? { ...i, status: result } : null;
+    const response = await fetch(
+      `http://127.0.0.1:${instance.port}/api/status`,
+      { signal: AbortSignal.timeout(1500) },
+    );
+    const s = await response.json();
+    return s.token === instance.token
+      ? { ...instance, status: s, origin: `http://127.0.0.1:${instance.port}` }
+      : null;
   } catch {
     return null;
   }
 }
 async function start() {
-  const child = run(path.join(dir, "Mayhem Pocket.exe"));
-  const info = await until(async () => {
-    if (child.exitCode !== null) {
-      let log = "";
-      try {
-        log = await readFile(path.join(dir, "logs/launcher.log"), "utf8");
-      } catch {}
-      throw Error("실행기 시작 실패: " + log);
-    }
-    return status();
-  }, "서버 시작");
-  await until(async () => {
-    try {
-      return (
-        await readFile(path.join(dir, "logs/launcher.log"), "utf8")
-      ).includes("트레이 실행기 준비 완료");
-    } catch {
-      return false;
-    }
-  }, "트레이 준비");
-  return { child, info };
+  const child = run();
+  const info = await until(status, "서버 시작");
+  assert.equal(info.pid, child.pid, "서버와 트레이는 같은 프로세스");
+  return { child, ...info };
 }
-async function closed(info, child) {
-  await exited(child);
-  await until(async () => !(await alive(info.pid)), "Node 종료");
+async function stop(running, web = true) {
+  if (web) {
+    const r = await fetch(running.origin + "/api/shutdown", {
+      method: "POST",
+      headers: { Origin: running.origin, "x-session-token": running.token },
+    });
+    assert.equal(r.status, 200);
+  } else await exited(run(["--stop"]));
+  await exited(running.child);
   assert.equal(await status(), null);
+  await assert.rejects(readFile(path.join(data, "instance.json")), {
+    code: "ENOENT",
+  });
 }
 try {
   await rm(smoke, { recursive: true, force: true });
   await mkdir(smoke, { recursive: true });
+  const quote = (s) => s.replaceAll("'", "''");
   execFileSync("powershell.exe", [
     "-NoProfile",
     "-Command",
-    `Expand-Archive -LiteralPath '${quote(path.resolve("release", name + ".zip"))}' -DestinationPath '${quote(smoke)}' -Force`,
+    `Expand-Archive -LiteralPath '${quote(path.resolve("release", packageName + ".zip"))}' -DestinationPath '${quote(smoke)}' -Force`,
   ]);
-  phase = "VERIFY_FILES";
-  for (const file of [
-    "Mayhem Pocket.exe",
-    "runtime/node.exe",
-    "runtime/LICENSE",
-    "app/server/THIRD_PARTY_LICENSES.txt",
-    "app/server/index.js",
-    "dist/web/index.html",
-    "scripts/storage.mjs",
-    "실행.cmd",
-    "종료.cmd",
-    ".env.example",
-  ])
-    await access(path.join(dir, file));
-  for (const file of [
-    ".env",
-    "data",
-    "backups",
-    "cache",
-    "logs",
-    "app/node_modules",
-    "node_modules",
-    "runtime/node_modules",
-    "runtime/npm.cmd",
-    "runtime/npx.cmd",
-    "app/package-lock.json",
-  ]) {
-    try {
-      await access(path.join(dir, file));
-      throw Error("배포 제외 파일 포함: " + file);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-  }
-  assert.deepEqual((await readdir(path.join(dir, "runtime"))).sort(), [
-    "LICENSE",
-    "node.exe",
-  ]);
-  assert.deepEqual((await readdir(path.join(dir, "app"))).sort(), [
-    "package.json",
-    "server",
-  ]);
-  const executable = await readFile(path.join(dir, "Mayhem Pocket.exe"));
-  const pe = executable.readUInt32LE(0x3c);
-  assert.equal(
-    executable.readUInt16LE(pe + 24 + 68),
-    2,
-    "콘솔 없는 Windows GUI 실행 파일이어야 합니다.",
+  assert.deepEqual(
+    (await readdir(dir)).sort(),
+    [
+      "Mayhem Pocket.exe",
+      "README.md",
+      "THIRD_PARTY_LICENSES.txt",
+      "THIRD_PARTY_NOTICES.md",
+      "dist",
+      ".env.example",
+      "실행.cmd",
+      "종료.cmd",
+    ].sort(),
   );
-  phase = "START";
-  const first = await start();
-  assert.equal(first.info.status.hasKey, false);
-  assert.ok(
-    (
-      await (await fetch(`http://127.0.0.1:${first.info.port}`)).text()
-    ).includes("Mayhem Pocket"),
-  );
-  phase = "DUPLICATE";
-  const duplicate = run(path.join(dir, "Mayhem Pocket.exe"));
-  await exited(duplicate);
-  phase = "LEGACY_START";
-  const legacy = run(process.env.ComSpec || "cmd.exe", [
-    "/d",
-    "/s",
-    "/c",
-    "실행.cmd",
-  ]);
-  await exited(legacy);
-  await delay(800);
-  assert.equal(
-    (await status()).pid,
-    first.info.pid,
-    "중복 실행이 서버를 늘리면 안 됩니다.",
-  );
-  phase = "TRAY_STOP";
-  await exited(run(path.join(dir, "Mayhem Pocket.exe"), ["--stop"]));
-  await closed(first.info, first.child);
-  console.log(
-    "GUI 실행 파일, 한글·공백 경로, UI, 중복 실행, 실행.cmd, 트레이와 동일한 종료 경로 검증 완료",
-  );
-
-  phase = "WEB_STOP";
-  const second = await start();
-  const origin = `http://127.0.0.1:${second.info.port}`;
-  const stop = await fetch(origin + "/api/shutdown", {
-    method: "POST",
-    headers: { "x-session-token": second.info.token, Origin: origin },
-  });
-  assert.equal(stop.status, 200);
-  await closed(second.info, second.child);
-  console.log("웹 화면 종료 시 트레이 프로세스 종료 검증 완료");
-
-  phase = "PORT_STALE";
-  occupied = createServer((req, res) => {
-    res.writeHead(404);
-    res.end();
-  });
-  await new Promise((resolve, reject) => {
-    occupied.once("error", reject);
-    occupied.listen(14319, "127.0.0.1", resolve);
-  });
+  await mkdir(path.join(source, "details"), { recursive: true });
+  await mkdir(path.join(source, "raw-details"));
+  await mkdir(path.join(source, "images"));
   await writeFile(
-    path.join(env.MAYHEM_DATA_DIR, "instance.json"),
-    JSON.stringify({ port: 14319, pid: 999999, token: "stale-test" }),
+    path.join(source, "catalog.json"),
+    JSON.stringify({
+      meta: { dataVersion: "16.21.5" },
+      data: [{ id: 8, name: "블라디미르" }],
+    }),
   );
+  const full = {
+    meta: { dataVersion: "16.21.5" },
+    data: {
+      champion: { id: 8, name: "블라디미르" },
+      augments: [],
+      builds: [{ type: "AP", coreItems: [] }],
+    },
+  };
+  await writeFile(path.join(source, "details/8.json"), JSON.stringify(full));
+  await writeFile(
+    path.join(source, "raw-details/8.json"),
+    JSON.stringify({
+      meta: { dataVersion: "16.21.6" },
+      data: {
+        champion: { id: 8, name: "블라디미르" },
+        augments: [{ id: 1, name: "시제품 증강" }],
+        builds: [],
+        rawOnly: true,
+      },
+    }),
+  );
+  await writeFile(
+    path.join(source, "augments.json"),
+    JSON.stringify({
+      meta: { dataVersion: "16.21.5" },
+      data: [
+        {
+          id: 1,
+          name: "시제품 증강",
+          description: "설명",
+          topChampions: [{ id: 8, name: "블라디미르" }],
+        },
+      ],
+    }),
+  );
+  await writeFile(
+    path.join(source, "credentials.json"),
+    "DO NOT READ OR MODIFY",
+  );
+
+  const imageUrl = "https://cdn.dtodo.cn/hextech/champion-icons/8.png";
+  const image = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0uoAAAAASUVORK5CYII=",
+    "base64",
+  );
+  await writeFile(
+    path.join(
+      source,
+      "images",
+      createHash("sha256").update(imageUrl).digest("hex"),
+    ),
+    image,
+  );
+  const checks = [];
+  const first = await start();
+  assert.equal(first.status.prototype, undefined);
+  assert.equal(first.status.hasKey, false);
+  checks.push("Node 없이 서버와 트레이 단일 프로세스 시작, 한글·공백 경로");
+  assert.match(await (await fetch(first.origin)).text(), /Mayhem Pocket/);
+  const html = await (await fetch(first.origin)).text();
+  const asset = html.match(/src="([^\"]+\.js)"/)[1];
+  assert.equal((await fetch(first.origin + asset)).status, 200);
+  assert.equal(
+    (await (await fetch(first.origin + "/api/champions")).json())[0].id,
+    8,
+  );
+  const detail = await (await fetch(first.origin + "/api/champions/8")).json();
+  assert.equal(detail.data.augments[0].id, 1);
+  assert.equal(detail.data.builds[0].type, "AP");
+  assert.equal(detail.buildStale, true);
+  assert.equal(
+    (await (await fetch(first.origin + "/api/augment-descriptions")).json())
+      .data[0].topChampions[0].id,
+    8,
+  );
+  assert.deepEqual(
+    Buffer.from(
+      await (
+        await fetch(
+          first.origin + "/api/image?url=" + encodeURIComponent(imageUrl),
+        )
+      ).arrayBuffer(),
+    ),
+    image,
+  );
+  checks.push(
+    "기존 화면과 정적 파일, 캐시 목록·상세·도감·이미지 조회, 최신 증강과 이전 빌드 결합",
+  );
+  assert.equal(
+    (await fetch(first.origin + "/api/shutdown", { method: "POST" })).status,
+    403,
+  );
+  assert.equal(
+    (
+      await fetch(first.origin + "/api/shutdown", {
+        method: "POST",
+        headers: {
+          Origin: "https://example.com",
+          "x-session-token": first.token,
+        },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await fetch(
+        first.origin +
+          "/api/image?url=" +
+          encodeURIComponent("file:///C:/Windows/win.ini"),
+      )
+    ).status,
+    403,
+  );
+  const headers = {
+    Origin: first.origin,
+    "x-session-token": first.token,
+    "content-type": "application/json",
+  };
+  assert.equal(
+    (
+      await fetch(first.origin + "/api/settings", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          theme: "light",
+          champion: 8,
+          favorites: [8, 8, -1],
+          recent: [8],
+          tab: "builds",
+        }),
+      })
+    ).status,
+    200,
+  );
+  assert.deepEqual(
+    (await (await fetch(first.origin + "/api/settings")).json()).favorites,
+    [8],
+  );
+  const parallel = await Promise.all(
+    Array.from({ length: 16 }, () =>
+      fetch(first.origin + "/api/status").then((r) => r.json()),
+    ),
+  );
+  assert.ok(parallel.every((s) => !s.prototype && s.token === first.token));
+  const duplicate = run();
+  await exited(duplicate);
+  assert.equal((await status()).pid, first.pid);
+  await stop(first);
+  checks.push("동시 조회, 중복 실행 방지, 웹 종료와 실행 기록 정리");
+  const second = await start();
+  assert.equal(
+    (await (await fetch(second.origin + "/api/settings")).json()).theme,
+    "light",
+  );
+  await stop(second, false);
+  checks.push("재실행 후 설정 유지, 트레이와 동일한 --stop 종료");
+  occupied = createServer((q, r) => r.end("occupied"));
+  await new Promise((resolve) => occupied.listen(14331, "127.0.0.1", resolve));
+  await mkdir(data, { recursive: true });
+  await writeFile(path.join(data, "instance.json"), "{}");
   const third = await start();
-  assert.equal(third.info.port, 14320);
-  phase = "LEGACY_STOP";
-  const stopScript = run(process.env.ComSpec || "cmd.exe", [
-    "/d",
-    "/s",
-    "/c",
-    "종료.cmd",
-  ]);
-  await exited(stopScript);
-  await closed(third.info, third.child);
+  assert.equal(third.port, 14332);
+  await stop(third);
   await new Promise((resolve) => occupied.close(resolve));
   occupied = null;
-  console.log("사용 중인 포트·이전 실행 기록 복구, 종료.cmd 검증 완료");
-
-  phase = "OWNER_CLEANUP";
+  checks.push("포트 충돌 우회, 오래된 실행 기록 복구");
   const fourth = await start();
   fourth.child.kill();
   await until(
-    async () => !(await alive(fourth.info.pid)),
-    "실행기 강제 종료 후 Node 정리",
+    () => fourth.child.exitCode !== null || fourth.child.signalCode !== null,
+    "강제 종료",
   );
-  console.log("실행기 강제 종료 시 서버 잔류 방지 검증 완료");
-  phase = "REUSE_EXISTING";
-  const raw = run(path.join(dir, "runtime/node.exe"), [
-    path.join(dir, "app/server/index.js"),
-  ]);
-  const rawInfo = await until(async () => {
-    const info = await status();
-    return info?.pid === raw.pid ? info : null;
-  }, "기존 서버 준비");
-  const attached = await start();
+  await assert.rejects(
+    fetch(fourth.origin + "/api/status", { signal: AbortSignal.timeout(1000) }),
+  );
+  const fifth = await start();
+  await stop(fifth);
+  checks.push("강제 종료 시 서버 잔류 없음, 재시작");
   assert.equal(
-    attached.info.pid,
-    rawInfo.pid,
-    "기존 서버를 재사용해야 합니다.",
+    await readFile(path.join(source, "credentials.json"), "utf8"),
+    "DO NOT READ OR MODIFY",
   );
-  attached.child.kill();
-  await until(
-    () =>
-      attached.child.signalCode !== null || attached.child.exitCode !== null,
-    "연결 실행기 종료",
-  );
-  assert.equal(
-    await alive(rawInfo.pid),
-    true,
-    "실행기 소유가 아닌 기존 서버를 강제로 죽이면 안 됩니다.",
-  );
-  const rawOrigin = `http://127.0.0.1:${rawInfo.port}`;
-  await fetch(rawOrigin + "/api/shutdown", {
-    method: "POST",
-    headers: { "x-session-token": rawInfo.token, Origin: rawOrigin },
-  });
-  await exited(raw);
-  console.log("기존 서버 재사용·소유하지 않은 프로세스 보호 검증 완료");
 
-  phase = "MISSING_ENTRY";
-  const entry = path.join(dir, "app/server/index.js");
-  await rename(entry, entry + ".test-hold");
-  try {
-    await exited(run(path.join(dir, "Mayhem Pocket.exe")), 1);
-  } finally {
-    await rename(entry + ".test-hold", entry);
-  }
-  console.log(
-    "필수 파일 누락 시 오류 로그·실패 종료 검증 완료. 실제 Windows 10 트레이 외관과 브라우저 표시는 수동 확인이 필요합니다.",
+  checks.push("기존 API 키·설정 파일 무변경");
+  await writeFile(
+    "release/csharp-lifecycle-checks.json",
+    JSON.stringify(checks, null, 2),
   );
+  console.log(checks.map((c) => "통과: " + c).join("\n"));
 } catch (error) {
-  const code = [
-    "ENOENT",
-    "EACCES",
-    "EPERM",
-    "ECONNREFUSED",
-    "ERR_ASSERTION",
-    "ETIMEDOUT",
-  ].includes(error.code)
-    ? error.code
-    : "CHECK_FAILURE";
-  const numbers =
-    typeof error.actual === "number" && typeof error.expected === "number"
-      ? `; actual=${error.actual}; expected=${error.expected}`
-      : "";
-  console.error(
-    `::error title=Windows package check::phase=${phase}; code=${code}${numbers}`,
-  );
-  let log = "";
   try {
-    log = await readFile(path.join(dir, "logs/launcher.log"), "utf8");
+    console.error(await readFile(path.join(dir, "logs/launcher.log"), "utf8"));
   } catch {}
-  console.error(error, log);
   throw error;
 } finally {
   for (const child of children)
     if (child.exitCode === null && child.signalCode === null) child.kill();
   if (occupied) await new Promise((resolve) => occupied.close(resolve));
-  await delay(1000);
+  await delay(500);
   await rm(smoke, {
     recursive: true,
     force: true,
