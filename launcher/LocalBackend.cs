@@ -44,6 +44,7 @@ internal sealed partial class LocalServer
         ImportLegacy();
         catalog=Read("catalog.json"); credits=Read("credits.json");
         apiKey=Text(Get(Read("credentials.json"),"apiKey")) ?? "";
+        if(!String.IsNullOrEmpty(apiKey)) ProtectKey(Path.Combine(Program.Data,"credentials.json"));
         if(String.IsNullOrEmpty(apiKey))
         {
             var imported=Environment.GetEnvironmentVariable("ARAMGG_API_KEY");
@@ -77,13 +78,29 @@ internal sealed partial class LocalServer
             else if(!File.Exists(to)) File.Copy(entry.FullName,to,false);
         }
     }
-    private void StoreKey(string value)
+    private void ProtectKey(string file)
     {
-        Save("credentials.json",new {apiKey=value});
         var security=new FileSecurity();
         security.SetAccessRuleProtection(true,false);
         security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User,FileSystemRights.FullControl,AccessControlType.Allow));
-        File.SetAccessControl(Path.Combine(Program.Data,"credentials.json"),security);
+        File.SetAccessControl(file,security);
+    }
+    private void StoreKey(string value)
+    {
+        lock(storageLock)
+        {
+            var target=Path.Combine(Program.Data,"credentials.json");
+            var temporary=target+"."+Guid.NewGuid().ToString("N")+".tmp";
+            try
+            {
+                using(File.Create(temporary)) {}
+                ProtectKey(temporary);
+                File.WriteAllText(temporary,json.Serialize(new {apiKey=value}),new UTF8Encoding(false));
+                if(File.Exists(target)) File.Replace(temporary,target,null); else File.Move(temporary,target);
+                ProtectKey(target);
+            }
+            finally {if(File.Exists(temporary))File.Delete(temporary);}
+        }
         lock(stateLock) apiKey=value;
     }
     private object CreditView()

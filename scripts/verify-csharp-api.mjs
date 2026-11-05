@@ -267,7 +267,7 @@ try {
       [
         "-NoProfile",
         "-Command",
-        `(Get-Acl -LiteralPath '${keyFile}').AreAccessRulesProtected`,
+        `[IO.File]::GetAccessControl('${keyFile}').AreAccessRulesProtected`,
       ],
       { encoding: "utf8" },
     ),
