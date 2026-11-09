@@ -136,7 +136,7 @@ function AugmentName({
         <Icon
           url={a.iconUrl}
           name={a.name ?? String(a.id)}
-          size={compact ? 28 : 36}
+          size={compact ? 36 : 38}
         />
         <div>
           {a.name ?? a.id}
@@ -229,17 +229,13 @@ function CoreItemImages({ items }: { items: any[] }) {
   return (
     <div className="overview-items">
       {items.map((item, index) => (
-        <span
-          key={`${item.id}-${index}`}
-          title={item.name ?? String(item.id)}
-          tabIndex={0}
-        >
+        <span key={`${item.id}-${index}`}>
           <Icon
             url={item.iconUrl}
             name={item.name ?? String(item.id)}
             size={42}
           />
-          <span className="item-tooltip">{item.name ?? item.id}</span>
+          <small className="overview-item-name">{item.name ?? item.id}</small>
         </span>
       ))}
     </div>
@@ -345,6 +341,31 @@ function BuildPreparation({ build }: { build: any }) {
   return (
     <div className="build-preparation">
       <div className="preparation-spells">
+        <h4>시작 아이템</h4>
+        {startingItems.length ? (
+          <div className="spell-pairs">
+            <div
+              className="spell-pair"
+              role="group"
+              aria-label="시작 아이템 조합"
+            >
+              {startingItems.map((item: any, index: number) => (
+                <span key={index} title={item.name}>
+                  <Icon
+                    url={item.iconUrl}
+                    name={item.name ?? String(item.id)}
+                    size={32}
+                  />
+                  <small>{item.name ?? item.id}</small>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p>저장된 시작 아이템 정보가 없습니다.</p>
+        )}
+      </div>
+      <div className="preparation-spells">
         <h4>소환사 주문</h4>
         {spellPairs.length ? (
           <div className="spell-pairs">
@@ -385,31 +406,6 @@ function BuildPreparation({ build }: { build: any }) {
           </ol>
         ) : (
           <p>저장된 스킬 정보가 없습니다.</p>
-        )}
-      </div>
-      <div className="preparation-spells">
-        <h4>시작 아이템</h4>
-        {startingItems.length ? (
-          <div className="spell-pairs">
-            <div
-              className="spell-pair"
-              role="group"
-              aria-label="시작 아이템 조합"
-            >
-              {startingItems.map((item: any, index: number) => (
-                <span key={index} title={item.name}>
-                  <Icon
-                    url={item.iconUrl}
-                    name={item.name ?? String(item.id)}
-                    size={32}
-                  />
-                  <small>{item.name ?? item.id}</small>
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p>저장된 시작 아이템 정보가 없습니다.</p>
         )}
       </div>
     </div>
@@ -1576,7 +1572,7 @@ export default function App() {
                     >
                       <section
                         className="overview-preparation"
-                        aria-label="소환사 주문과 스킬 순서"
+                        aria-label="시작 아이템, 소환사 주문과 스킬 순서"
                       >
                         <BuildPreparation build={overviewBuild} />
                       </section>

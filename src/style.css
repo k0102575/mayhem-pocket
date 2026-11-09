@@ -466,6 +466,15 @@ tbody tr:hover {
   margin-top: 4px;
   color: #96919f;
 }
+.augment-name .game-icon {
+  background: #282431;
+  border-color: #514860;
+  object-fit: contain;
+}
+[data-theme="light"] .augment-name .game-icon {
+  background: #41384c;
+  border-color: #655571;
+}
 .augment-name small.gold {
   color: #d0b169;
 }
@@ -881,24 +890,6 @@ progress {
   display: inline-flex;
   border-radius: 7px;
 }
-.item-tooltip {
-  display: none;
-  position: absolute;
-  z-index: 3;
-  left: 0;
-  bottom: calc(100% + 6px);
-  white-space: nowrap;
-  background: #29223b;
-  border: 1px solid #5b477a;
-  border-radius: 5px;
-  padding: 5px 8px;
-  font-size: 11px;
-  color: #e6e6ed;
-}
-.overview-items > span:hover .item-tooltip,
-.overview-items > span:focus .item-tooltip {
-  display: block;
-}
 .overview-source {
   margin-top: 12px;
   color: #858391;
@@ -926,7 +917,7 @@ progress {
 .overview-augment-grid > :only-child {
   grid-column: 1 / -1;
 }
-@media (max-width: 1200px) {
+@media (max-width: 740px) {
   .overview-augment-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
@@ -1296,20 +1287,22 @@ header {
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  color: #302a3e;
-  background: #f6f7fb;
+  --light-panel: #ece9f0;
+  --light-control: #e8e3ed;
+  color: var(--scan-text);
+  background: #e2dee8;
 }
 [data-theme="light"] .workspace,
 [data-theme="light"] .build-card {
-  background: #fff;
+  background: var(--light-panel);
   border-color: #dcd9e5;
 }
 [data-theme="light"] aside {
-  background: #f2f1f7;
+  background: #e5e0eb;
   border-color: #dcd9e5;
 }
 [data-theme="light"] .search {
-  background: #fff;
+  background: var(--light-panel);
   border-color: #cbc7d8;
   color: #666071;
 }
@@ -1349,7 +1342,7 @@ header {
   border-color: #e0dce8;
 }
 [data-theme="light"] th {
-  background: #f0eef6;
+  background: var(--light-control);
   color: #635b71;
 }
 [data-theme="light"] .augment-name,
@@ -1370,7 +1363,7 @@ header {
 [data-theme="light"] .build-heading > span,
 [data-theme="light"] .list-head,
 [data-theme="light"] footer {
-  color: #686174;
+  color: var(--scan-muted);
 }
 [data-theme="light"] .metric strong,
 [data-theme="light"] .rate,
@@ -1401,7 +1394,7 @@ header {
   color: #69438c;
 }
 [data-theme="light"] select {
-  background: #fff;
+  background: var(--light-panel);
   border-color: #cbc7d8;
   color: #514b60;
 }
@@ -1443,12 +1436,6 @@ header {
 }
 [data-theme="light"] .augment-name small.silver {
   color: #52677d;
-}
-[data-theme="light"] .item-tooltip {
-  color: #302a3e;
-  background: #fff;
-  border-color: #b99bdc;
-  box-shadow: 0 3px 12px #302a3e20;
 }
 [data-theme="light"] .alert,
 [data-theme="light"] .download-status {
@@ -1623,7 +1610,7 @@ header {
   font-size: 12px;
 }
 [data-theme="light"] .augment-tooltip {
-  background: #fff;
+  background: var(--light-panel);
   color: #302a3e;
   border-color: #b99bdc;
   box-shadow: 0 8px 28px #302a3e26;
@@ -1830,12 +1817,12 @@ header {
   padding: 32px 0;
 }
 [data-theme="light"] .encyclopedia {
-  background: #fff;
+  background: var(--light-panel);
   border-color: #dedde7;
 }
 [data-theme="light"] .encyclopedia-augment,
 [data-theme="light"] .encyclopedia-champions button {
-  background: #f7f7fb;
+  background: var(--light-control);
   border-color: #dedde7;
 }
 [data-theme="light"] .encyclopedia-augment[aria-pressed="true"],
@@ -1923,4 +1910,132 @@ header {
 
 .cache-update button {
   text-decoration: none;
+}
+
+/* Quick reading during a match */
+:root {
+  --scan-text: #f0edf7;
+  --scan-muted: #bcb6ca;
+  --scan-accent: #d9c4ff;
+  --scan-surface: #201e28;
+  --scan-border: #443d52;
+}
+:root[data-theme="light"] {
+  --scan-text: #241d31;
+  --scan-muted: #51475e;
+  --scan-accent: #56287e;
+  --scan-surface: #e4dced;
+  --scan-border: #d4c7e1;
+}
+
+.intro {
+  padding-top: 4px;
+  padding-bottom: 14px;
+}
+.intro h1 {
+  font-size: clamp(20px, 2.2vw, 30px);
+}
+.intro .eyebrow,
+.intro p {
+  display: none;
+}
+.champion-header h2 {
+  word-break: keep-all;
+}
+.champion-row,
+.tabs > button,
+.augment-name,
+.encyclopedia-augment-name {
+  font-size: 14px;
+  font-weight: 650;
+}
+:root[data-theme] .tabs > button.active {
+  color: var(--scan-accent);
+  background: var(--scan-surface);
+}
+:root[data-theme] .overview h3,
+:root[data-theme] .build-preparation h4,
+:root[data-theme] .build-card h4,
+:root[data-theme] .augment-name,
+:root[data-theme] .item small,
+:root[data-theme] .situational small,
+:root[data-theme] .spell-pair small,
+.overview-item-name {
+  color: var(--scan-text);
+}
+.overview h3,
+.build-preparation h4,
+.build-card h4 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.overview h3 span,
+:root[data-theme] .level-skills small,
+:root[data-theme] .route-stat small,
+:root[data-theme] .build-heading > span,
+:root[data-theme] .overview-source,
+:root[data-theme] .detail-freshness {
+  color: var(--scan-muted);
+  font-size: 12px;
+}
+.item small,
+.situational small,
+.spell-pair small,
+.overview-item-name {
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 600;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-align: center;
+}
+.overview-items {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.overview-items > span {
+  flex: 0 1 90px;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.overview-core-build .overview-items {
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+.overview .compact-augments td {
+  padding: 6px 8px;
+}
+.overview-preparation .build-preparation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.overview-preparation .build-preparation > div {
+  min-width: 0;
+  padding: 12px;
+  background: var(--scan-surface);
+  border: 1px solid var(--scan-border);
+  border-radius: 8px;
+}
+.overview-preparation .preparation-skills {
+  grid-column: 1 / -1;
+}
+.overview-preparation .level-skills,
+.overview-preparation .spell-pairs,
+.overview-preparation .spell-pair {
+  flex-wrap: wrap;
+}
+.overview-preparation .spell-pair + .spell-pair {
+  padding-left: 12px;
+}
+.overview-preparation .spell-pairs {
+  gap: 12px;
+}
+@media (max-width: 650px) {
+  .overview-preparation .build-preparation {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
