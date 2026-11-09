@@ -102,7 +102,7 @@ const bootIds = new Set([
 export function isBoot(item: any) {
   return (
     bootIds.has(Number(item?.id)) ||
-    /신발|장화|군화|발걸음|boots|greaves|treads|sorcerer.s shoes/i.test(
+    /신발|장화|군화|헤르메스의\s*발걸음|boots|greaves|treads|sorcerer.s shoes/i.test(
       item?.name ?? "",
     )
   );
@@ -118,7 +118,7 @@ export function separateBuildBoots(build: any) {
     });
   for (const row of build.coreItems ?? []) keepItems(row.items);
   const situationalItems = keepItems(build.situationalItems);
-  const seen = new Map<string, any>();
+  const seen = new Set<string>();
   const coreItems = (build.coreItems ?? []).flatMap((row: any) => {
     const items = keepItems(row.items);
     if (!items.length) return [];
@@ -185,24 +185,11 @@ export function separateBuildBoots(build: any) {
       const key = JSON.stringify(
         candidate.items.map((item: any) => item.id ?? item.name),
       );
-      const source = {
-        coreItemIds: [...originalIds],
-        addedItemIds: candidate.items
-          .filter((item: any) => !originalIds.includes(String(item.id)))
-          .map((item: any) => String(item.id)),
-      };
-      const existing = seen.get(key);
-      if (existing) {
-        existing.routeSources.push(source);
-        return [];
-      }
-      const route = {
-        ...candidate,
-        itemIds: candidate.items.map((item: any) => item.id),
-        routeSources: [source],
-      };
-      seen.set(key, route);
-      return [route];
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [
+        { ...candidate, itemIds: candidate.items.map((item: any) => item.id) },
+      ];
     });
   });
   const displayedItemIds = new Set(
@@ -230,45 +217,6 @@ export function commonBuildBoots(builds: any[] = []) {
     }
   }
   return [...boots.values()];
-}
-
-// Match the original core (including boots), then the already displayed extension prefix.
-// Do not mix unrelated routes or treat later extension items as the next purchase.
-export function routeFollowUpItems(build: any, route: any) {
-  const selectedIds = new Set(
-    (route?.items ?? []).map((item: any) => String(item.id)),
-  );
-  const candidates: { item: any; step: number; games: number }[] = [];
-  for (const source of route?.routeSources ?? []) {
-    for (const extension of build.itemExtensions ?? []) {
-      const coreIds = (extension.coreItemIds ?? []).map(String).sort();
-      if (JSON.stringify(coreIds) !== JSON.stringify(source.coreItemIds))
-        continue;
-      const items = (extension.items ?? []).filter(
-        (item: any) => !isBoot(item),
-      );
-      const prefix = source.addedItemIds;
-      if (
-        items.length <= prefix.length ||
-        !prefix.every((id: string, i: number) => String(items[i]?.id) === id)
-      )
-        continue;
-      const next = items[prefix.length];
-      if (!next || selectedIds.has(String(next.id))) continue;
-      candidates.push({
-        item: next,
-        step: items.length,
-        games: typeof extension.games === "number" ? extension.games : -1,
-      });
-    }
-  }
-  candidates.sort((a, b) => a.step - b.step || b.games - a.games);
-  const unique = new Map<string, any>();
-  for (const candidate of candidates) {
-    if (!unique.has(String(candidate.item.id)))
-      unique.set(String(candidate.item.id), candidate.item);
-  }
-  return [...unique.values()];
 }
 
 export function encyclopediaAugments(

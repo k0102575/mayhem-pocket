@@ -26,7 +26,6 @@ import { GameIcon as Icon } from "./components/GameIcon";
 import { AugmentEncyclopedia } from "./components/AugmentEncyclopedia";
 import { Button } from "./components/ui/button";
 import {
-  routeFollowUpItems,
   commonBuildBoots,
   separateBuildBoots,
   championTiers,
@@ -272,15 +271,8 @@ function BuildBoots({ boots }: { boots: any[] }) {
   );
 }
 function ItemBuildCard({ build: b, index: i }: { build: any; index: number }) {
-  const [selectedKey, SELECT] = useState<string | null>(null);
   const routes = (b.coreItems ?? []).slice(0, 3);
-  const routeKey = (row: any) => JSON.stringify(row.itemIds);
-  const selectedRoute = routes.find(
-    (row: any) => routeKey(row) === selectedKey,
-  );
-  const followups = selectedRoute
-    ? routeFollowUpItems(b, selectedRoute)
-    : (b.situationalItems ?? []);
+  const followups = b.situationalItems ?? [];
   return (
     <article className="build-card">
       <div className="build-heading">
@@ -298,20 +290,8 @@ function ItemBuildCard({ build: b, index: i }: { build: any; index: number }) {
         신발 대신 연결된 후속 아이템을 표시합니다. 연결 통계가 없으면 빌드
         유형의 후속 추천을 사용하며 조합 승률은 표시하지 않습니다.
       </p>
-      <p className="muted route-selection-note">
-        핵심 조합을 클릭하면 연결된 다음 아이템을 볼 수 있습니다.
-      </p>
       {routes.map((row: any, j: number) => (
-        <button
-          type="button"
-          className="item-route selectable-item-route"
-          key={routeKey(row)}
-          aria-pressed={selectedKey === routeKey(row)}
-          aria-label={`핵심 조합 ${j + 1}: ${row.items.map((item: any) => item.name ?? item.id).join(" → ")}`}
-          onClick={() =>
-            SELECT(selectedKey === routeKey(row) ? null : routeKey(row))
-          }
-        >
+        <div className="item-route" key={JSON.stringify(row.itemIds)}>
           <span className="muted">{j + 1}</span>
           {row.items?.map((item: any, k: number) => (
             <span className="item-with-arrow" key={k}>
@@ -330,49 +310,24 @@ function ItemBuildCard({ build: b, index: i }: { build: any; index: number }) {
                 : row.routeSource}
             </small>
           </span>
-        </button>
+        </div>
       ))}
-      <section className="route-followups" aria-label="후속 아이템">
-        <div className="followup-heading">
-          <h4>
-            {selectedRoute ? "선택한 조합의 다음 아이템" : "공통 후속 아이템"}
-          </h4>
-          {selectedRoute && (
-            <button
-              type="button"
-              className="clear-route"
-              onClick={() => SELECT(null)}
-            >
-              공통 후속 보기
-            </button>
-          )}
-        </div>
-        <div aria-live="polite">
-          {selectedRoute && (
-            <p className="muted route-selection-note">
-              핵심 조합 {routes.indexOf(selectedRoute) + 1} 선택됨
-            </p>
-          )}
-          {followups.length ? (
-            <div className="situational">
-              {followups.map((item: any) => (
-                <div title={item.name} key={item.id}>
-                  <Icon
-                    url={item.iconUrl}
-                    name={item.name ?? String(item.id)}
-                  />
-                  <small>{item.name ?? item.id}</small>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted route-selection-note">
-              {selectedRoute
-                ? "이 조합에 연결된 후속 아이템 정보가 없습니다."
-                : "저장된 공통 후속 아이템이 없습니다."}
-            </p>
-          )}
-        </div>
+      <section aria-label="공통 후속 아이템">
+        <h4>공통 후속 아이템</h4>
+        {followups.length ? (
+          <div className="situational">
+            {followups.map((item: any) => (
+              <div title={item.name} key={item.id}>
+                <Icon url={item.iconUrl} name={item.name ?? String(item.id)} />
+                <small>{item.name ?? item.id}</small>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted build-route-note">
+            저장된 공통 후속 아이템이 없습니다.
+          </p>
+        )}
       </section>
     </article>
   );
@@ -382,6 +337,11 @@ function BuildPreparation({ build }: { build: any }) {
     .filter((row: any) => row.spells?.length)
     .slice(0, 2);
   const skills = build?.skillOrders?.[0]?.skillKeys ?? [];
+  const startingItems =
+    (build?.startingItems ?? [])
+      .filter((row: any) => Array.isArray(row.items) && row.items.length)
+      .sort((a: any, b: any) => (b.games ?? 0) - (a.games ?? 0))[0]?.items ??
+    [];
   return (
     <div className="build-preparation">
       <div className="preparation-spells">
@@ -425,6 +385,31 @@ function BuildPreparation({ build }: { build: any }) {
           </ol>
         ) : (
           <p>저장된 스킬 정보가 없습니다.</p>
+        )}
+      </div>
+      <div className="preparation-spells">
+        <h4>시작 아이템</h4>
+        {startingItems.length ? (
+          <div className="spell-pairs">
+            <div
+              className="spell-pair"
+              role="group"
+              aria-label="시작 아이템 조합"
+            >
+              {startingItems.map((item: any, index: number) => (
+                <span key={index} title={item.name}>
+                  <Icon
+                    url={item.iconUrl}
+                    name={item.name ?? String(item.id)}
+                    size={32}
+                  />
+                  <small>{item.name ?? item.id}</small>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p>저장된 시작 아이템 정보가 없습니다.</p>
         )}
       </div>
     </div>
@@ -726,6 +711,21 @@ export default function App() {
       await refresh().catch(() => {});
     }
   }
+  async function downloadCatalog() {
+    SETCATALOGLOADING(true);
+    try {
+      await action(async () => {
+        const result = await api("/catalog", {});
+        N(
+          result.downloaded
+            ? "최신 챔피언 목록을 저장했습니다."
+            : "저장된 최신 챔피언 목록을 확인했습니다.",
+        );
+      });
+    } finally {
+      SETCATALOGLOADING(false);
+    }
+  }
   async function downloadDetail() {
     if (!id || downloadLock.current || busy || status.job?.running) return;
     const selected = id;
@@ -779,6 +779,10 @@ export default function App() {
   );
   const latestVersion =
     status.checkError || checkFailed ? null : status.remoteVersion;
+  const catalogUpdateAvailable =
+    !!latestVersion &&
+    !!status.catalogVersion &&
+    status.catalogVersion !== latestVersion;
   const currentVersion = detail?.meta?.dataVersion;
   const detailCurrent =
     !!latestVersion && currentVersion === latestVersion && !dRawOnly(detail);
@@ -922,13 +926,7 @@ export default function App() {
             variant="outline"
             disabled={busy || status.job?.running || !status.hasKey}
             aria-busy={catalogLoading}
-            onClick={() => {
-              SETCATALOGLOADING(true);
-              void action(async () => {
-                await api("/catalog", {});
-                N("챔피언 목록을 확인했습니다. 최신 캐시는 재사용합니다.");
-              }).finally(() => SETCATALOGLOADING(false));
-            }}
+            onClick={() => void downloadCatalog()}
           >
             {catalogLoading ? (
               <LoaderCircle size={14} className="spin" />
@@ -1039,15 +1037,29 @@ export default function App() {
           아이콘 다시 받기
         </Button>
       </section>
+      {page === "champions" && catalogUpdateAvailable && (
+        <div className="update-notice cache-update" role="status">
+          <span>
+            <strong>챔피언 목록 업데이트 필요</strong>
+            <br />
+            저장 버전 {status.catalogVersion} → 최신 버전 {latestVersion}. 최신
+            목록을 다시 받아주세요.
+          </span>
+          <Button
+            disabled={
+              busy || catalogLoading || status.job?.running || !status.hasKey
+            }
+            onClick={() => void downloadCatalog()}
+          >
+            {catalogLoading ? "목록 받는 중…" : "최신 목록 받기 · 최대 1"}
+          </Button>
+        </div>
+      )}
       {page === "champions" &&
         !managementOpen &&
-        (status.checkError ||
-          checkFailed ||
-          (latestVersion && status.catalogVersion !== latestVersion)) && (
+        (status.checkError || checkFailed) && (
           <div className="update-notice">
-            {status.checkError || checkFailed
-              ? "최신 여부 확인 불가 · 저장된 데이터를 표시합니다."
-              : "새 데이터가 있습니다."}
+            최신 여부 확인 불가 · 저장된 데이터를 표시합니다.
             <button onClick={() => MANAGEMENT(true)}>데이터 관리 열기</button>
           </div>
         )}
@@ -1432,6 +1444,19 @@ export default function App() {
                 </div>
               ) : (
                 <>
+                  {latestVersion &&
+                    currentVersion &&
+                    currentVersion !== latestVersion && (
+                      <div className="update-notice cache-update" role="status">
+                        <span>
+                          <strong>챔피언 상세 업데이트 필요</strong>
+                          <br />
+                          저장 버전 {currentVersion} → 최신 버전 {latestVersion}
+                          . 최신 증강과 빌드를 받으려면 위의 ‘상세 받기’를
+                          눌러주세요.
+                        </span>
+                      </div>
+                    )}
                   <div className="detail-freshness">
                     <span>
                       마지막 다운로드 {dateTime(detail.cache?.downloadedAt)}

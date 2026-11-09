@@ -105,6 +105,18 @@ export function AugmentEncyclopedia({
               : " · 업데이트 있음"
             : " · 최신 여부 미확인")}
       </div>
+      {catalog.version &&
+        latestVersion &&
+        catalog.version !== latestVersion && (
+          <div className="update-notice cache-update" role="status">
+            <span>
+              <strong>증강 도감 업데이트 필요</strong>
+              <br />
+              저장 버전 {catalog.version} → 최신 버전 {latestVersion}. 최신
+              설명을 받으려면 위의 ‘도감 갱신’을 눌러주세요.
+            </span>
+          </div>
+        )}
       {!all.length ? (
         <div className="empty-small encyclopedia-empty">
           <p>도감 받기를 누르면 전체 증강 목록과 능력 설명을 저장합니다.</p>

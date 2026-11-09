@@ -1632,64 +1632,6 @@ header {
   color: #70439c;
 }
 
-.selectable-item-route {
-  width: 100%;
-  color: inherit;
-  background: transparent;
-  border: 1px solid transparent;
-  border-top-color: #292a34;
-  border-radius: 6px;
-  padding: 13px 6px;
-  text-align: left;
-  font: inherit;
-}
-.selectable-item-route:hover {
-  background: #211c2c;
-}
-.selectable-item-route[aria-pressed="true"] {
-  background: #292135;
-  border-color: #a57dde;
-}
-.selectable-item-route:focus-visible {
-  outline: 2px solid #b99bdc;
-  outline-offset: 2px;
-}
-.followup-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 18px 0 12px;
-}
-.followup-heading h4 {
-  margin: 0;
-}
-.clear-route {
-  color: #c5b0ef;
-  font-size: 12px;
-  background: transparent;
-  border: 0;
-  padding: 4px 0;
-}
-.route-selection-note {
-  font-size: 12px;
-  margin: 0 0 12px;
-}
-[data-theme="light"] .selectable-item-route {
-  border-top-color: #e4deec;
-}
-[data-theme="light"] .selectable-item-route:hover {
-  background: #f4eefb;
-}
-[data-theme="light"] .selectable-item-route[aria-pressed="true"] {
-  background: #eee4fa;
-  border-color: #9163be;
-}
-[data-theme="light"] .clear-route {
-  color: #70439c;
-}
-
 /* 증강 도감 */
 .workspace[hidden],
 .intro[hidden],
@@ -1967,4 +1909,18 @@ header {
     padding: 9px;
     gap: 8px;
   }
+}
+
+.cache-update {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.cache-update button {
+  text-decoration: none;
 }
