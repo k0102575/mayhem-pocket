@@ -446,10 +446,7 @@ export default function App() {
   const encyclopediaSearch = useRef<HTMLInputElement>(null);
   const [champs, C] = useState<any[]>([]);
   const [descriptionData, DESCRIPTIONS] = useState<any>({ data: [] });
-  const [id, I, restoreChampion] = usePreference<number | null>(
-    "champion",
-    null,
-  );
+  const [id, I] = useState<number | null>(null);
   const [theme, THEME, restoreTheme] = usePreference<"dark" | "light">(
     "theme",
     "dark",
@@ -458,7 +455,7 @@ export default function App() {
     document.documentElement.dataset.theme =
       theme === "light" ? "light" : "dark";
   }, [theme]);
-  const [tab, T, restoreTab] = usePreference("tab", "summary");
+  const [tab, T] = useState("summary");
   const [favs, F, restoreFavorites] = usePreference<number[]>("favorites", []);
   const [recent, R, restoreRecent] = usePreference<number[]>("recent", []);
   const [q, Q] = useState("");
@@ -577,8 +574,6 @@ export default function App() {
       .then((value) => {
         if (!active) return;
         if (value) {
-          restoreChampion(value.champion);
-          restoreTab(value.tab);
           if (value.theme === "light" || value.theme === "dark")
             restoreTheme(value.theme);
           restoreFavorites(value.favorites);
@@ -603,9 +598,9 @@ export default function App() {
   useEffect(() => {
     if (!settingsReady || !status.token) return;
     const value = {
-      champion: id,
+      champion: null,
       theme,
-      tab,
+      tab: "summary",
       favorites: favs,
       recent,
       rarity,
@@ -630,8 +625,6 @@ export default function App() {
     settingsSaveRetry,
     status.token,
     theme,
-    id,
-    tab,
     favs,
     recent,
     rarity,
@@ -758,6 +751,7 @@ export default function App() {
     });
   }
   function select(n: number) {
+    if (n !== id) T("summary");
     I(n);
     R([n, ...recent.filter((x) => x !== n)].slice(0, 8));
   }
