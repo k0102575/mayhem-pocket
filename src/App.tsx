@@ -644,11 +644,6 @@ export default function App() {
       });
   }, [status.token]);
   useEffect(() => {
-    D(null);
-    DETAILERROR("");
-    AQ("");
-  }, [id]);
-  useEffect(() => {
     const request = ++detailRequest.current;
     let active = true;
     DETAILERROR("");
@@ -751,8 +746,14 @@ export default function App() {
     });
   }
   function select(n: number) {
-    if (n !== id) T("summary");
-    I(n);
+    if (n !== id) {
+      ++detailRequest.current;
+      I(n);
+      T("summary");
+      D(null);
+      DETAILERROR("");
+      AQ("");
+    }
     R([n, ...recent.filter((x) => x !== n)].slice(0, 8));
   }
   const tiers = useMemo(() => championTiers(champs), [champs]);
@@ -774,11 +775,17 @@ export default function App() {
     !!status.catalogVersion &&
     status.catalogVersion !== latestVersion;
   const currentVersion = detail?.meta?.dataVersion;
+  const hasFullDetail = !!detail?.data && !detail.data.rawOnly;
+  const detailUpdateAvailable =
+    hasFullDetail &&
+    !!latestVersion &&
+    !!currentVersion &&
+    currentVersion !== latestVersion;
   const detailCurrent =
-    !!latestVersion && currentVersion === latestVersion && !dRawOnly(detail);
-  function dRawOnly(x: any) {
-    return !!x?.data?.rawOnly || !!x?.buildStale;
-  }
+    hasFullDetail &&
+    !detail.buildStale &&
+    !!latestVersion &&
+    currentVersion === latestVersion;
   const d = detail?.data;
   const champ =
     d?.champion ??
@@ -1224,20 +1231,6 @@ export default function App() {
             />
             <kbd>/</kbd>
           </div>
-          {recent.length > 0 && !q && (
-            <div className="recent">
-              <span>최근</span>
-              {recent
-                .map((n) => champs.find((c) => c.id === n))
-                .filter(Boolean)
-                .slice(0, 3)
-                .map((c) => (
-                  <button key={c.id} onClick={() => select(c.id)}>
-                    {c.name}
-                  </button>
-                ))}
-            </div>
-          )}
           <div className="list-head">
             <span>
               챔피언 <b>{filtered.length}</b>
@@ -1397,7 +1390,8 @@ export default function App() {
                   onClick={() => T("augments")}
                 >
                   <Layers3 size={16} />
-                  증강 순위 <span>{d?.augments?.length ?? 0}</span>
+                  증강 순위{" "}
+                  <span>{detail ? (d?.augments?.length ?? 0) : "…"}</span>
                 </button>
                 <button
                   role="tab"
@@ -1406,7 +1400,8 @@ export default function App() {
                   onClick={() => T("builds")}
                 >
                   <PackageOpen size={16} />
-                  아이템 빌드 <span>{d?.builds?.length ?? 0}</span>
+                  아이템 빌드{" "}
+                  <span>{detail ? (d?.builds?.length ?? 0) : "…"}</span>
                 </button>
               </div>
               {detailError && (
@@ -1434,27 +1429,29 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  {latestVersion &&
-                    currentVersion &&
-                    currentVersion !== latestVersion && (
-                      <div className="update-notice cache-update" role="status">
-                        <span>
-                          <strong>챔피언 상세 업데이트 필요</strong>
-                          <br />
-                          저장 버전 {currentVersion} → 최신 버전 {latestVersion}
-                          . 최신 증강과 빌드를 받으려면 위의 ‘상세 받기’를
-                          눌러주세요.
-                        </span>
-                      </div>
-                    )}
+                  {detailUpdateAvailable && (
+                    <div className="update-notice cache-update" role="status">
+                      <span>
+                        <strong>챔피언 상세 업데이트 필요</strong>
+                        <br />
+                        저장 버전 {currentVersion} → 최신 버전 {latestVersion}.
+                        최신 증강과 빌드를 받으려면 위의 ‘상세 받기’를
+                        눌러주세요.
+                      </span>
+                    </div>
+                  )}
                   <div className="detail-freshness">
                     <span>
                       마지막 다운로드 {dateTime(detail.cache?.downloadedAt)}
-                      {latestVersion
-                        ? currentVersion === latestVersion
-                          ? " · 최신"
-                          : " · 업데이트 있음"
-                        : " · 최신 여부 미확인"}
+                      {detail.buildStale
+                        ? " · 이전 빌드 포함"
+                        : !hasFullDetail
+                          ? " · 증강만 저장됨"
+                          : detailUpdateAvailable
+                            ? " · 업데이트 있음"
+                            : detailCurrent
+                              ? " · 최신"
+                              : " · 최신 여부 미확인"}
                     </span>
                     <details className="metadata" key={id}>
                       <summary>데이터 정보</summary>

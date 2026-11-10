@@ -182,17 +182,6 @@ kbd {
   padding: 0 5px;
   border-radius: 3px;
 }
-.recent {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 10px;
-  padding: 15px 3px;
-  color: #747987;
-}
-.recent button {
-  color: #b4b6c4;
-}
 .list-head {
   display: flex;
   justify-content: space-between;
@@ -1352,7 +1341,6 @@ header {
 [data-theme="light"] .muted,
 [data-theme="light"] p,
 [data-theme="light"] .champion-label small,
-[data-theme="light"] .recent button,
 [data-theme="light"] .cache-times,
 [data-theme="light"] .data-note,
 [data-theme="light"] .metadata,
