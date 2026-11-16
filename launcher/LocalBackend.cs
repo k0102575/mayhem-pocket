@@ -247,7 +247,12 @@ internal sealed partial class LocalServer
         if(method=="GET" || method=="HEAD")
         {
             if(route=="/api/status") return StatusView();
-            if(route=="/api/champions") return Get(catalog,"data") ?? new object[0];
+            if(route=="/api/champions") return List(Get(catalog,"data")).Select(champion => {
+                var result=new Dictionary<string,object>(Map(champion));
+                var detail=Read("details/"+Get(champion,"id")+".json");
+                result["detailVersion"]=Get(detail,"data")!=null && !Convert.ToBoolean(Get(Get(detail,"data"),"rawOnly") ?? false) ? Get(Get(detail,"meta"),"dataVersion") : null;
+                return result;
+            }).ToArray();
             if(route=="/api/augment-descriptions") return CatalogView(Read("augments.json"),false);
             if(route=="/api/settings") { var value=Read("settings.json"); return value==null?null:Sanitize(value); }
             var match=Regex.Match(route,@"^/api/champions/([1-9]\d*)$");

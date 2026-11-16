@@ -184,7 +184,20 @@ app.post("/api/credentials", async (req) => {
     active = false;
   }
 });
-app.get("/api/champions", async () => catalog?.data ?? []);
+app.get("/api/champions", async () =>
+  Promise.all(
+    (catalog?.data ?? []).map(async (champion: any) => {
+      const detail = await read(`details/${champion.id}.json`);
+      return {
+        ...champion,
+        detailVersion:
+          detail?.data && !detail.data.rawOnly
+            ? detail.meta?.dataVersion
+            : null,
+      };
+    }),
+  ),
+);
 app.get("/api/augment-descriptions", async () =>
   augmentCatalogView(await read("augments.json")),
 );

@@ -36,6 +36,8 @@ import {
   secondarySummaryBuilds,
 } from "./ui-model";
 import { validRate } from "../server/normalize";
+const patchVersion = (value: string | undefined) =>
+  value?.split(".").slice(0, 2).join(".");
 const pct = (n: any) =>
   typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1
     ? `${(n * 100).toFixed(2)}%`
@@ -724,6 +726,13 @@ export default function App() {
           ++detailRequest.current;
           DETAILERROR("");
           D(result);
+          C((values) =>
+            values.map((champion) =>
+              champion.id === selected
+                ? { ...champion, detailVersion: result.meta?.dataVersion }
+                : champion,
+            ),
+          );
         }
         N(
           `${name} 상세 ${result.reused ? "캐시를 확인했습니다" : "다운로드가 완료됐습니다"}.`,
@@ -773,19 +782,24 @@ export default function App() {
   const catalogUpdateAvailable =
     !!latestVersion &&
     !!status.catalogVersion &&
-    status.catalogVersion !== latestVersion;
+    patchVersion(status.catalogVersion) !== patchVersion(latestVersion);
   const currentVersion = detail?.meta?.dataVersion;
-  const hasFullDetail = !!detail?.data && !detail.data.rawOnly;
+  const hasFullDetail =
+    !!detail?.data && (!detail.data.rawOnly || !!detail.buildMeta);
+  const fullDetailVersion = detail?.buildMeta?.dataVersion ?? currentVersion;
+  const buildUpdateAvailable =
+    !!detail?.buildStale &&
+    patchVersion(detail.buildMeta?.dataVersion) !==
+      patchVersion(currentVersion);
   const detailUpdateAvailable =
     hasFullDetail &&
     !!latestVersion &&
     !!currentVersion &&
-    currentVersion !== latestVersion;
+    patchVersion(fullDetailVersion) !== patchVersion(latestVersion);
   const detailCurrent =
     hasFullDetail &&
-    !detail.buildStale &&
     !!latestVersion &&
-    currentVersion === latestVersion;
+    patchVersion(fullDetailVersion) === patchVersion(latestVersion);
   const d = detail?.data;
   const champ =
     d?.champion ??
@@ -1257,7 +1271,18 @@ export default function App() {
                 onClick={() => select(c.id)}
               >
                 <Icon url={c.iconUrl} name={c.name} />
-                <span className="champion-label">{c.name}</span>
+                <span className="champion-label">
+                  {c.name}
+                  <small>
+                    {!c.detailVersion
+                      ? "상세 받기 필요"
+                      : latestVersion &&
+                          patchVersion(c.detailVersion) !==
+                            patchVersion(latestVersion)
+                        ? "업데이트 필요"
+                        : "다운로드 완료"}
+                  </small>
+                </span>
                 {favs.includes(c.id) && <Star size={12} className="gold" />}
                 <span
                   className="champion-rating"
@@ -1429,6 +1454,16 @@ export default function App() {
                 </div>
               ) : (
                 <>
+                  {!hasFullDetail && !detail.buildStale && (
+                    <div className="update-notice cache-update" role="status">
+                      <span>
+                        <strong>상세 받기 필요</strong>
+                        <br />
+                        증강은 저장되어 있지만 빌드 정보가 없습니다. 위의 ‘상세
+                        받기’를 눌러주세요.
+                      </span>
+                    </div>
+                  )}
                   {detailUpdateAvailable && (
                     <div className="update-notice cache-update" role="status">
                       <span>
@@ -1443,10 +1478,10 @@ export default function App() {
                   <div className="detail-freshness">
                     <span>
                       마지막 다운로드 {dateTime(detail.cache?.downloadedAt)}
-                      {detail.buildStale
+                      {buildUpdateAvailable
                         ? " · 이전 빌드 포함"
                         : !hasFullDetail
-                          ? " · 증강만 저장됨"
+                          ? " · 상세 받기 필요"
                           : detailUpdateAvailable
                             ? " · 업데이트 있음"
                             : detailCurrent
@@ -1496,7 +1531,7 @@ export default function App() {
                           <dt>빌드 출처</dt>
                           <dd>일반 칼바람 참고 데이터</dd>
                         </div>
-                        {detail.buildStale && (
+                        {buildUpdateAvailable && (
                           <>
                             <div>
                               <dt>이전 빌드 버전</dt>
@@ -1549,7 +1584,7 @@ export default function App() {
                       </Button>
                     </div>
                   )}
-                  {detail.buildStale && (
+                  {buildUpdateAvailable && (
                     <div className="notice stale-build-note">
                       이전 빌드 데이터 사용 중 · 증강과 빌드의 버전이 다릅니다.
                       상세 받기로 갱신할 수 있습니다.
@@ -1763,7 +1798,7 @@ export default function App() {
       </main>
       <footer>
         <span>
-          Mayhem Pocket <b>v0.1.8</b> · 데이터:{" "}
+          Mayhem Pocket <b>v0.1.9</b> · 데이터:{" "}
           <a href="https://aramgg.com" target="_blank" rel="noreferrer">
             ARAMGG <ArrowUpRight size={11} />
           </a>
